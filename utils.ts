@@ -256,4 +256,12 @@ export function createSeparator(char: string = '─', length: number = 30): stri
 // 格式化大数字（添加千分位分隔符）
 export function formatLargeNumber(num: number): string {
   return num.toLocaleString('zh-CN');
+}
+
+// 隐藏手机号中间4位
+export function maskPhoneNumber(phonenum: string): string {
+  if (!phonenum || phonenum.length !== 11) {
+    return phonenum;
+  }
+  return phonenum.substring(0, 3) + '****' + phonenum.substring(7);
 } 

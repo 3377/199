@@ -17,7 +17,8 @@ import {
   getTrendIcon,
   getUsageReminder,
   createSeparator,
-  formatLargeNumber
+  formatLargeNumber,
+  maskPhoneNumber
 } from './utils.ts';
 
 /**
@@ -84,7 +85,7 @@ export class EnhancedDataFormatter {
     const trendIcon = getTrendIcon(stats.flowTrend);
     const dailyAvgFormatted = formatFlow(stats.dailyAvgFlow);
     
-    return `📱 手机：${summary.phonenum}
+    return `📱 手机：${maskPhoneNumber(summary.phonenum)}
 ${balanceIcon} 余额：¥${balance} (${getBalanceStatus(summary.balance) === 'sufficient' ? '充足' : getBalanceStatus(summary.balance) === 'low' ? '偏低' : '不足'})
 📞 通话：${voiceInfo}
 🌐 总流量
@@ -260,7 +261,7 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
       specialFlowInfo = `\n  - 专用：${convertFlow(summary.specialUse, 'GB', 2)} / ${convertFlow(summary.specialTotal, 'GB', 2)} GB`;
     }
     
-    return `📱 手机：${summary.phonenum}
+    return `📱 手机：${maskPhoneNumber(summary.phonenum)}
 💰 余额：${balance}
 📞 通话：${voiceInfo}
 🌐 总流量
@@ -317,7 +318,7 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
     const isOverFlow = summary.flowOver > 0;
     const stats = this.calculateUsageStats(summary);
     
-    return `📱 ${summary.phonenum} | 💰 ¥${balance} | 🌐 ${flowUsed}/${flowTotal}GB ${isOverFlow ? '🔴' : '🟢'} | 📊 ${stats.flowUsagePercent.toFixed(1)}%`;
+    return `📱 ${maskPhoneNumber(summary.phonenum)} | 💰 ¥${balance} | 🌐 ${flowUsed}/${flowTotal}GB ${isOverFlow ? '🔴' : '🟢'} | 📊 ${stats.flowUsagePercent.toFixed(1)}%`;
   }
 }
 

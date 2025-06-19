@@ -1,5 +1,5 @@
 import type { ApiResponse } from './types.ts';
-import { validateConfig } from './utils.ts';
+import { validateConfig, maskPhoneNumber } from './utils.ts';
 import { EnhancedTelecomClient } from './telecom.ts';
 import { formatter } from './formatter.ts';
 import { getCacheManager } from './cache.ts';
@@ -15,7 +15,7 @@ let telecomClient: EnhancedTelecomClient;
 try {
   config = validateConfig();
   telecomClient = new EnhancedTelecomClient(config);
-  console.log(`🚀 服务启动成功，目标手机号: ${config.phonenum}`);
+  console.log(`🚀 服务启动成功，目标手机号: ${maskPhoneNumber(config.phonenum)}`);
 } catch (error) {
   console.error('❌ 服务启动失败:', error);
   throw new Error(`服务初始化失败: ${error.message}`);
