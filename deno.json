@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["deno.window"],
+    "strict": true
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 80,
+    "indentWidth": 2,
+    "semiColons": true,
+    "singleQuote": true,
+    "proseWrap": "preserve"
+  },
+  "lock": false,
+  "nodeModulesDir": false,
+  "tasks": {
+    "dev": "deno run --allow-net --allow-env --allow-read --allow-write --watch main.ts",
+    "start": "deno run --allow-net --allow-env --allow-read --allow-write main.ts",
+    "cache": "deno cache main.ts",
+    "check": "deno check main.ts",
+    "lint": "deno lint",
+    "fmt": "deno fmt"
+  },
+  "imports": {
+    "@/": "./"
+  }
+} 

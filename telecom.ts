@@ -1,0 +1,280 @@
+import type { SummaryData, FluxPackageData, ImportantData, ShareUsageData, Config } from './types.ts';
+
+/**
+ * 增强版电信接口客户端
+ */
+export class EnhancedTelecomClient {
+  private config: Config;
+  
+  constructor(config: Config) {
+    this.config = config;
+  }
+  
+  // 调用summary接口获取基本信息
+  async getSummary(): Promise<SummaryData> {
+    const url = `${this.config.apiBase}/summary`;
+    const requestBody = {
+      phonenum: this.config.phonenum,
+      password: this.config.password
+    };
+    
+    console.log(`正在调用summary接口: ${url}`);
+    
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP错误! status: ${response.status}, statusText: ${response.statusText}`);
+      }
+      
+      const data = await response.json() as SummaryData;
+      console.log('✅ Summary接口调用成功');
+      return data;
+    } catch (error) {
+      console.error('❌ 调用summary接口失败:', error);
+      throw new Error(`获取基本信息失败: ${error.message}`);
+    }
+  }
+  
+  // 调用userFluxPackage接口获取流量包详情
+  async getFluxPackage(): Promise<FluxPackageData> {
+    const url = `${this.config.apiBase}/userFluxPackage`;
+    const requestBody = {
+      phonenum: this.config.phonenum,
+      password: this.config.password
+    };
+    
+    console.log(`正在调用userFluxPackage接口: ${url}`);
+    
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP错误! status: ${response.status}, statusText: ${response.statusText}`);
+      }
+      
+      const data = await response.json() as FluxPackageData;
+      console.log('✅ FluxPackage接口调用成功');
+      return data;
+    } catch (error) {
+      console.error('❌ 调用userFluxPackage接口失败:', error);
+      throw new Error(`获取流量包信息失败: ${error.message}`);
+    }
+  }
+  
+  // 调用qryImportantData接口获取重要数据详情
+  async getImportantData(): Promise<ImportantData | null> {
+    const url = `${this.config.apiBase}/qryImportantData`;
+    const requestBody = {
+      phonenum: this.config.phonenum,
+      password: this.config.password
+    };
+    
+    console.log(`正在调用qryImportantData接口: ${url}`);
+    
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      if (!response.ok) {
+        console.warn(`⚠️ qryImportantData接口调用失败: ${response.status}`);
+        return null;
+      }
+      
+      const data = await response.json() as ImportantData;
+      console.log('✅ ImportantData接口调用成功');
+      return data;
+    } catch (error) {
+      console.warn('⚠️ 调用qryImportantData接口失败，将跳过该数据:', error.message);
+      return null;
+    }
+  }
+  
+  // 调用qryShareUsage接口获取共享套餐信息
+  async getShareUsage(): Promise<ShareUsageData | null> {
+    const url = `${this.config.apiBase}/qryShareUsage`;
+    const requestBody = {
+      phonenum: this.config.phonenum,
+      password: this.config.password
+    };
+    
+    console.log(`正在调用qryShareUsage接口: ${url}`);
+    
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      if (!response.ok) {
+        console.warn(`⚠️ qryShareUsage接口调用失败: ${response.status}`);
+        return null;
+      }
+      
+      const data = await response.json() as ShareUsageData;
+      console.log('✅ ShareUsage接口调用成功');
+      return data;
+    } catch (error) {
+      console.warn('⚠️ 调用qryShareUsage接口失败，将跳过该数据:', error.message);
+      return null;
+    }
+  }
+  
+  // 获取完整数据（调用所有可用接口）
+  async getFullData(): Promise<{ 
+    summary: SummaryData; 
+    fluxPackage: FluxPackageData;
+    importantData?: ImportantData;
+    shareUsage?: ShareUsageData;
+  }> {
+    console.log('🚀 开始获取完整电信数据...');
+    
+    try {
+      // 核心接口并行调用（必须成功）
+      const [summary, fluxPackage] = await Promise.all([
+        this.getSummary(),
+        this.getFluxPackage()
+      ]);
+      
+      console.log('✅ 核心数据获取成功，开始获取扩展数据...');
+      
+      // 扩展接口并行调用（允许失败）
+      const [importantData, shareUsage] = await Promise.allSettled([
+        this.getImportantData(),
+        this.getShareUsage()
+      ]);
+      
+             const result = {
+         summary,
+         fluxPackage,
+         importantData: importantData.status === 'fulfilled' ? (importantData.value || undefined) : undefined,
+         shareUsage: shareUsage.status === 'fulfilled' ? (shareUsage.value || undefined) : undefined
+       };
+      
+      console.log('🎉 完整数据获取完成');
+      return result;
+    } catch (error) {
+      console.error('❌ 获取完整数据失败:', error);
+      throw error;
+    }
+  }
+  
+  // 获取基础数据（兼容原版，只调用必要接口）
+  async getBasicData(): Promise<{ summary: SummaryData; fluxPackage: FluxPackageData }> {
+    console.log('📋 开始获取基础电信数据...');
+    
+    try {
+      // 并行调用两个核心接口
+      const [summary, fluxPackage] = await Promise.all([
+        this.getSummary(),
+        this.getFluxPackage()
+      ]);
+      
+      console.log('✅ 基础数据获取成功');
+      return { summary, fluxPackage };
+    } catch (error) {
+      console.error('❌ 获取基础数据失败:', error);
+      throw error;
+    }
+  }
+  
+  // 测试连接
+  async testConnection(): Promise<boolean> {
+    try {
+      console.log('🔍 正在测试连接...');
+      await this.getSummary();
+      console.log('✅ 连接测试成功');
+      return true;
+    } catch (error) {
+      console.error('❌ 连接测试失败:', error);
+      return false;
+    }
+  }
+  
+  // 获取接口健康状态
+  async getHealthStatus(): Promise<{
+    summary: boolean;
+    fluxPackage: boolean;
+    importantData: boolean;
+    shareUsage: boolean;
+    overall: boolean;
+  }> {
+    console.log('🏥 正在检查接口健康状态...');
+    
+    const results = {
+      summary: false,
+      fluxPackage: false,
+      importantData: false,
+      shareUsage: false,
+      overall: false
+    };
+    
+    try {
+      // 测试summary接口
+      try {
+        await this.getSummary();
+        results.summary = true;
+      } catch (error) {
+        console.warn('⚠️ Summary接口不可用');
+      }
+      
+      // 测试fluxPackage接口
+      try {
+        await this.getFluxPackage();
+        results.fluxPackage = true;
+      } catch (error) {
+        console.warn('⚠️ FluxPackage接口不可用');
+      }
+      
+      // 测试importantData接口
+      try {
+        const data = await this.getImportantData();
+        results.importantData = data !== null;
+      } catch (error) {
+        console.warn('⚠️ ImportantData接口不可用');
+      }
+      
+      // 测试shareUsage接口
+      try {
+        const data = await this.getShareUsage();
+        results.shareUsage = data !== null;
+      } catch (error) {
+        console.warn('⚠️ ShareUsage接口不可用');
+      }
+      
+      // 整体健康状态（至少summary和fluxPackage可用）
+      results.overall = results.summary && results.fluxPackage;
+      
+      console.log('📊 健康检查完成:', results);
+      return results;
+    } catch (error) {
+      console.error('❌ 健康检查失败:', error);
+      return results;
+    }
+  }
+}
+
+// 兼容性：保持原TelecomClient类
+export class TelecomClient extends EnhancedTelecomClient {
+  // 保持原有接口不变，用于向后兼容
+} 
