@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "allowJs": true,
-    "lib": ["deno.window", "dom", "dom.iterable", "es6"],
+    "lib": ["deno.window", "dom", "dom.iterable", "es6", "deno.ns"],
     "strict": false
   },
   "lint": {

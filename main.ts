@@ -1,4 +1,5 @@
 import type { ApiResponse, UserConfig, MultiUserConfig } from './types.ts';
+import type { LoginRequest, LoginResponse, ApiRequest, SessionManagementResponse } from './api-types.ts';
 import { maskPhoneNumber } from './utils.ts';
 import { EnhancedTelecomClient } from './telecom.ts';
 import { formatter } from './formatter.ts';
@@ -6,6 +7,9 @@ import { getCacheManager } from './cache.ts';
 import { authManager } from './auth.ts';
 import { generateMainPage, generateJsonPage } from './templates.ts';
 import { loadConfig, getConfigManager } from './config-manager.ts';
+import { TelecomAuthClient, getAuthClient } from './api-auth.ts';
+import { TelecomApiClient, getApiClient } from './api-client.ts';
+import { getSessionManager } from './session.ts';
 
 /**
  * 增强版电信套餐查询格式化服务
@@ -34,6 +38,27 @@ try {
   multiConfig.users.forEach(user => {
     console.log(`📱 用户: ${user.displayName}`);
   });
+  
+  console.log('\n📡 可用接口:');
+  console.log('📊 格式化查询:');
+  console.log('  • GET  /query     - 基础查询');
+  console.log('  • GET  /enhanced  - 增强查询');
+  console.log('  • GET  /json      - JSON数据');
+  console.log('  • GET  /status    - 状态检查');
+  console.log('  • GET  /clear-cache - 清理缓存');
+  
+  console.log('🔧 原始API (兼容Python版本):');
+  console.log('  • POST /api/login             - 用户登录');
+  console.log('  • POST /api/qryImportantData  - 套餐信息');
+  console.log('  • POST /api/userFluxPackage   - 流量包查询');
+  console.log('  • POST /api/qryShareUsage     - 共享流量');
+  console.log('  • POST /api/summary           - 综合信息');
+  
+  console.log('⚙️  会话管理:');
+  console.log('  • GET  /api/session/stats     - 会话统计');
+  console.log('  • GET  /api/session/clean     - 清理过期');
+  console.log('  • GET  /api/session/clear     - 清除所有');
+  console.log('-----------------------------------\n');
 } catch (error) {
   console.error('❌ 服务启动失败:', error);
   throw new Error(`服务初始化失败: ${error.message}`);
@@ -556,6 +581,217 @@ function requireAuth(request: Request): { authenticated: boolean; sessionId?: st
   return { authenticated: false };
 }
 
+// ============ 新增 API 处理函数 ============
+
+// API 登录处理
+async function handleApiLogin(request: Request): Promise<Response> {
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({
+      success: false,
+      message: '仅支持 POST 请求'
+    }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  
+  try {
+    const loginData: LoginRequest = await request.json();
+    
+    if (!loginData.phonenum || !loginData.password) {
+      return new Response(JSON.stringify({
+        success: false,
+        message: '手机号和密码不能为空'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // 获取客户端IP
+    const clientIp = request.headers.get('x-forwarded-for') || 
+                     request.headers.get('x-real-ip') || 
+                     'unknown';
+    
+    // 使用认证客户端处理登录
+    const authClient = getAuthClient(multiConfig.apiBase);
+    const result = await authClient.login(loginData, clientIp);
+    
+    const statusCode = result.success ? 200 : 401;
+    
+    return new Response(JSON.stringify(result), {
+      status: statusCode,
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+  } catch (error) {
+    console.error('API登录处理失败:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      message: `登录处理失败: ${error.message}`
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+// API 查询处理
+async function handleApiQuery(request: Request, endpoint: string): Promise<Response> {
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({
+      success: false,
+      message: '仅支持 POST 请求'
+    }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  
+  try {
+    const requestData: ApiRequest = await request.json();
+    
+    if (!requestData.phonenum || !requestData.token) {
+      return new Response(JSON.stringify({
+        success: false,
+        message: '手机号和Token不能为空'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // 验证Token
+    const authClient = getAuthClient(multiConfig.apiBase);
+    const isValidToken = await authClient.validateToken(requestData.phonenum, requestData.token);
+    
+    if (!isValidToken) {
+      return new Response(JSON.stringify({
+        success: false,
+        message: 'Token无效或已过期'
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // 执行API调用
+    const apiClient = getApiClient(multiConfig.apiBase);
+    let result;
+    
+    switch (endpoint) {
+      case 'qryImportantData':
+        result = await apiClient.qryImportantData(requestData);
+        break;
+      case 'userFluxPackage':
+        result = await apiClient.userFluxPackage(requestData);
+        break;
+      case 'qryShareUsage':
+        result = await apiClient.qryShareUsage(requestData);
+        break;
+      case 'summary':
+        result = await apiClient.summary(requestData);
+        break;
+      default:
+        return new Response(JSON.stringify({
+          success: false,
+          message: `未知的API端点: ${endpoint}`
+        }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+    }
+    
+    const statusCode = result.success ? 200 : 500;
+    
+    return new Response(JSON.stringify(result), {
+      status: statusCode,
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+  } catch (error) {
+    console.error(`API查询处理失败 (${endpoint}):`, error);
+    return new Response(JSON.stringify({
+      success: false,
+      message: `查询处理失败: ${error.message}`
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+// 会话管理处理
+async function handleSessionManagement(request: Request, action: string): Promise<Response> {
+  if (request.method !== 'GET' && request.method !== 'POST') {
+    return new Response(JSON.stringify({
+      success: false,
+      message: '仅支持 GET 或 POST 请求'
+    }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  
+  try {
+    const sessionManager = await getSessionManager();
+    let result: SessionManagementResponse;
+    
+    switch (action) {
+      case 'stats':
+        const stats = await sessionManager.getStats();
+        result = {
+          success: true,
+          message: '获取会话统计成功',
+          stats
+        };
+        break;
+        
+      case 'clean':
+        const cleaned = await sessionManager.cleanExpiredSessions();
+        result = {
+          success: true,
+          message: `已清理 ${cleaned} 个过期会话`,
+          cleaned
+        };
+        break;
+        
+      case 'clear':
+        const cleared = await sessionManager.clearAllSessions();
+        result = {
+          success: true,
+          message: `已清除所有 ${cleared} 个会话`,
+          cleaned: cleared
+        };
+        break;
+        
+      default:
+        return new Response(JSON.stringify({
+          success: false,
+          message: `未知的会话管理操作: ${action}`
+        }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+    }
+    
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+  } catch (error) {
+    console.error(`会话管理处理失败 (${action}):`, error);
+    return new Response(JSON.stringify({
+      success: false,
+      message: `会话管理失败: ${error.message}`
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
 // 登录处理
 async function handleLogin(request: Request): Promise<Response> {
   if (request.method === 'GET') {
@@ -718,7 +954,7 @@ async function handleRequest(request: Request): Promise<Response> {
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
     
-    // API路由
+    // 原有API路由（保持向后兼容）
     if (url.pathname === '/api/query' && (method === 'GET' || method === 'POST')) {
       let result: ApiResponse;
       
@@ -733,6 +969,43 @@ async function handleRequest(request: Request): Promise<Response> {
       return new Response(JSON.stringify(result), { 
         headers: { 'Content-Type': 'application/json' } 
       });
+    }
+    
+    // ============ 新增 API 路由 ============
+    
+    // API 登录路由
+    if (url.pathname === '/api/login') {
+      return await handleApiLogin(request);
+    }
+    
+    // API 查询路由
+    if (url.pathname === '/api/qryImportantData') {
+      return await handleApiQuery(request, 'qryImportantData');
+    }
+    
+    if (url.pathname === '/api/userFluxPackage') {
+      return await handleApiQuery(request, 'userFluxPackage');
+    }
+    
+    if (url.pathname === '/api/qryShareUsage') {
+      return await handleApiQuery(request, 'qryShareUsage');
+    }
+    
+    if (url.pathname === '/api/summary') {
+      return await handleApiQuery(request, 'summary');
+    }
+    
+    // 会话管理路由
+    if (url.pathname === '/api/session/stats') {
+      return await handleSessionManagement(request, 'stats');
+    }
+    
+    if (url.pathname === '/api/session/clean') {
+      return await handleSessionManagement(request, 'clean');
+    }
+    
+    if (url.pathname === '/api/session/clear') {
+      return await handleSessionManagement(request, 'clear');
     }
     
     return new Response('Not Found', { status: 404 });

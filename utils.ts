@@ -321,4 +321,42 @@ export function maskPhoneNumber(phonenum: string): string {
     return phonenum;
   }
   return phonenum.substring(0, 3) + '****' + phonenum.substring(7);
+}
+
+// 检查手机号是否在白名单中
+export function isPhoneInWhitelist(phonenum: string): boolean {
+  try {
+    const whitelist = globalThis.Deno?.env?.get?.('WHITELIST_NUM');
+    
+    // 如果没有设置白名单，则允许所有号码
+    if (!whitelist) {
+      return true;
+    }
+    
+    // 解析白名单
+    const allowedNumbers = whitelist.split(',').map(num => num.trim()).filter(Boolean);
+    
+    // 检查是否在白名单中
+    return allowedNumbers.includes(phonenum);
+  } catch (error) {
+    console.warn('检查白名单失败:', error);
+    // 出错时默认允许
+    return true;
+  }
+}
+
+// 验证手机号格式
+export function validatePhoneNumber(phonenum: string): boolean {
+  if (!phonenum) return false;
+  
+  // 检查是否为11位数字，且以1开头
+  return /^1[3-9]\d{9}$/.test(phonenum);
+}
+
+// 验证密码格式
+export function validatePassword(password: string): boolean {
+  if (!password) return false;
+  
+  // 检查是否为6位数字
+  return /^\d{6}$/.test(password);
 } 

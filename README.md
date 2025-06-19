@@ -96,11 +96,107 @@
 
 ## 🔌 API 调用说明
 
-### POST API 查询
+### 格式化查询 API
 
 **端点**: `POST /api/query`
 
 **请求格式**: `application/json` 或 `application/x-www-form-urlencoded`
+
+### 原始 API 接口（兼容 Python 版本）
+
+#### 用户登录
+
+**端点**: `POST /api/login`
+
+**请求示例**:
+```bash
+curl -X POST https://your-domain.deno.dev/api/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phonenum": "199****1016",
+    "password": "123456"
+  }'
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "message": "登录成功",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expires": 1703932800000,
+  "phonenum": "199****1016"
+}
+```
+
+#### 套餐信息查询
+
+**端点**: `POST /api/qryImportantData`
+
+**请求示例**:
+```bash
+curl -X POST https://your-domain.deno.dev/api/qryImportantData \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phonenum": "199****1016",
+    "token": "your_token_here"
+  }'
+```
+
+#### 流量包查询
+
+**端点**: `POST /api/userFluxPackage`
+
+**请求示例**:
+```bash
+curl -X POST https://your-domain.deno.dev/api/userFluxPackage \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phonenum": "199****1016", 
+    "token": "your_token_here"
+  }'
+```
+
+#### 共享流量查询
+
+**端点**: `POST /api/qryShareUsage`
+
+#### 综合信息查询
+
+**端点**: `POST /api/summary`
+
+### 会话管理 API
+
+#### 会话统计
+
+**端点**: `GET /api/session/stats`
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "message": "获取会话统计成功",
+  "stats": {
+    "totalSessions": 5,
+    "activeSessions": 3,
+    "expiredSessions": 2,
+    "sessionsByPhone": {
+      "199****1016": 2,
+      "138****5678": 1
+    }
+  }
+}
+```
+
+#### 清理过期会话
+
+**端点**: `GET /api/session/clean`
+
+#### 清除所有会话
+
+**端点**: `GET /api/session/clear`
+
+### 格式化查询 API (原有)
 
 #### JSON 请求示例
 
