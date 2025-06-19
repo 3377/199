@@ -209,8 +209,24 @@ export function getUsageReminder(balanceStatus: string, flowTrend: string, remai
 
 // 验证环境变量
 export function validateConfig(): { phonenum: string; password: string; apiBase: string; cacheTime: number } {
-  const phonenum = Deno.env.get('TELECOM_PHONENUM');
-  const password = Deno.env.get('TELECOM_PASSWORD');
+  // 使用标准方式获取环境变量，兼容Deno Deploy
+  let phonenum: string | undefined;
+  let password: string | undefined;
+  let apiBase: string;
+  let cacheTime: number;
+  
+  try {
+    phonenum = Deno.env.get('TELECOM_PHONENUM');
+    password = Deno.env.get('TELECOM_PASSWORD');
+    apiBase = Deno.env.get('API_BASE') || 'https://dx.ll.sd';
+    cacheTime = parseInt(Deno.env.get('CACHE_TIME') || '600000');
+  } catch {
+    // 如果Deno.env不可用，尝试其他方式
+    phonenum = undefined;
+    password = undefined;
+    apiBase = 'https://dx.ll.sd';
+    cacheTime = 600000;
+  }
   
   if (!phonenum || !password) {
     throw new Error('请设置环境变量 TELECOM_PHONENUM 和 TELECOM_PASSWORD');
@@ -223,9 +239,6 @@ export function validateConfig(): { phonenum: string; password: string; apiBase:
   if (!/^\d{6}$/.test(password)) {
     throw new Error('密码必须为6位数字');
   }
-  
-  const apiBase = Deno.env.get('API_BASE') || 'https://dx.ll.sd';
-  const cacheTime = parseInt(Deno.env.get('CACHE_TIME') || '600000'); // 默认10分钟
   
   return {
     phonenum,
