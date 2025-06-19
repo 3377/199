@@ -7,18 +7,25 @@ export function generateMainPage(content: string, title: string = '电信套餐�
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>${title}</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent;
+        }
         body {
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             padding: 20px;
             line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         .container {
             max-width: 1200px;
@@ -55,7 +62,7 @@ export function generateMainPage(content: string, title: string = '电信套餐�
             overflow: auto;
         }
         .data-display {
-            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
             font-size: 16px;
             line-height: 1.8;
             white-space: pre-wrap;
@@ -66,6 +73,7 @@ export function generateMainPage(content: string, title: string = '电信套餐�
             border-radius: 15px;
             border-left: 5px solid #667eea;
             box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
+            overflow-x: auto;
         }
         .actions {
             display: flex;
@@ -75,10 +83,10 @@ export function generateMainPage(content: string, title: string = '电信套餐�
             flex-wrap: wrap;
         }
         .btn {
-            padding: 12px 24px;
+            padding: 15px 30px;
             border: none;
             border-radius: 25px;
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 500;
             cursor: pointer;
             text-decoration: none;
@@ -87,8 +95,11 @@ export function generateMainPage(content: string, title: string = '电信套餐�
             gap: 8px;
             transition: all 0.3s ease;
             text-align: center;
-            min-width: 120px;
+            min-width: 140px;
+            min-height: 50px;
             justify-content: center;
+            touch-action: manipulation;
+            user-select: none;
         }
         .btn-primary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -100,7 +111,7 @@ export function generateMainPage(content: string, title: string = '电信套餐�
             color: #667eea;
             border: 2px solid rgba(102, 126, 234, 0.3);
         }
-        .btn:hover {
+        .btn:hover, .btn:active {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
         }
@@ -124,13 +135,17 @@ export function generateMainPage(content: string, title: string = '电信套餐�
             color: rgba(255, 255, 255, 0.9);
             text-decoration: none;
             font-size: 14px;
-            padding: 8px 16px;
+            padding: 12px 20px;
             border-radius: 20px;
             background: rgba(255, 255, 255, 0.1);
             transition: all 0.3s ease;
             border: 1px solid rgba(255, 255, 255, 0.2);
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            touch-action: manipulation;
         }
-        .quick-link:hover {
+        .quick-link:hover, .quick-link:active {
             background: rgba(255, 255, 255, 0.2);
             transform: translateY(-1px);
         }
@@ -153,8 +168,10 @@ export function generateMainPage(content: string, title: string = '电信套餐�
             box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
             transition: all 0.3s ease;
             z-index: 1000;
+            touch-action: manipulation;
+            user-select: none;
         }
-        .refresh-btn:hover {
+        .refresh-btn:hover, .refresh-btn:active {
             transform: scale(1.1) rotate(180deg);
         }
         
@@ -199,8 +216,13 @@ export function generateMainPage(content: string, title: string = '电信套餐�
             text-align: center;
             transition: all 0.2s ease;
             cursor: pointer;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
         }
-        .phone-option:hover {
+        .phone-option:hover, .phone-option:active {
             background: rgba(102, 126, 234, 0.2);
             border-color: #667eea;
             transform: translateX(3px);
@@ -230,104 +252,279 @@ export function generateMainPage(content: string, title: string = '电信套餐�
             align-items: center;
             justify-content: center;
             transition: all 0.3s ease;
+            touch-action: manipulation;
         }
-        .toggle-btn:hover {
+        .toggle-btn:hover, .toggle-btn:active {
             transform: scale(1.1);
         }
         
+        /* 移动端选择器样式 */
+        .mobile-phone-selector {
+            display: none;
+            width: 100%;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        .mobile-phone-selector select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            font-size: 16px;
+            background: white;
+            color: #333;
+            outline: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 12px center;
+            background-repeat: no-repeat;
+            background-size: 16px;
+            padding-right: 40px;
+        }
+        .mobile-phone-selector select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
         /* 响应式设计 */
-                 @media (max-width: 768px) {
-             body { padding: 15px; }
-             .header h1 { font-size: 2em; }
-             .content-card { padding: 25px; }
-             .data-display { 
-                 font-size: 14px; 
-                 padding: 20px;
-                 overflow-x: auto;
-             }
-             .actions { gap: 10px; }
-             .btn { min-width: 100px; font-size: 13px; }
-             .quick-links { gap: 15px; }
-             .refresh-btn {
-                 bottom: 20px;
-                 right: 20px;
-                 width: 50px;
-                 height: 50px;
-                 font-size: 20px;
-             }
-             .phone-selector {
-                 left: 10px;
-                 transform: translateY(-50%) scale(0.9);
-             }
-         }
-                 @media (max-width: 480px) {
-             .header h1 { font-size: 1.8em; }
-             .content-card { padding: 20px; }
-             .data-display { 
-                 font-size: 13px; 
-                 padding: 15px;
-             }
-             .actions { flex-direction: column; align-items: center; }
-             .btn { width: 200px; }
-             .quick-links { flex-direction: column; gap: 10px; }
-             .phone-selector {
-                 position: relative;
-                 left: 0;
-                 top: 0;
-                 transform: none;
-                 margin-bottom: 20px;
-                 width: 100%;
-                 max-width: 300px;
-                 margin-left: auto;
-                 margin-right: auto;
-             }
-         }
+        @media (max-width: 768px) {
+            body { 
+                padding: 15px; 
+                font-size: 16px;
+            }
+            .header h1 { 
+                font-size: 2.2em; 
+            }
+            .header .subtitle {
+                font-size: 1.0em;
+            }
+            .content-card { 
+                padding: 25px; 
+                border-radius: 15px;
+            }
+            .data-display { 
+                font-size: 15px; 
+                padding: 20px;
+                overflow-x: auto;
+                line-height: 1.6;
+                border-radius: 10px;
+            }
+            .actions { 
+                gap: 12px; 
+                margin-bottom: 25px;
+            }
+            .btn { 
+                min-width: 130px; 
+                font-size: 15px; 
+                padding: 14px 24px;
+                min-height: 48px;
+            }
+            .quick-links { 
+                gap: 15px; 
+            }
+            .quick-link {
+                font-size: 13px;
+                padding: 10px 16px;
+                min-height: 44px;
+            }
+            .refresh-btn {
+                bottom: 25px;
+                right: 25px;
+                width: 56px;
+                height: 56px;
+                font-size: 22px;
+            }
+            .phone-selector {
+                display: none !important;
+            }
+            .mobile-phone-selector {
+                display: block;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 12px;
+                font-size: 17px;
+            }
+            .header h1 { 
+                font-size: 2.0em; 
+                line-height: 1.2;
+            }
+            .header .subtitle {
+                font-size: 0.95em;
+            }
+            .content-card { 
+                padding: 20px; 
+                border-radius: 12px;
+                margin-bottom: 20px;
+            }
+            .data-display { 
+                font-size: 16px; 
+                padding: 18px;
+                line-height: 1.7;
+                word-break: break-all;
+            }
+            .actions { 
+                flex-direction: column; 
+                align-items: center; 
+                gap: 12px;
+                margin-bottom: 20px;
+            }
+            .btn { 
+                width: 100%; 
+                max-width: 280px;
+                min-height: 50px;
+                font-size: 16px;
+                padding: 16px 20px;
+            }
+            .quick-links { 
+                flex-direction: column; 
+                gap: 10px; 
+                align-items: center;
+            }
+            .quick-link {
+                width: 100%;
+                max-width: 200px;
+                text-align: center;
+                justify-content: center;
+                min-height: 46px;
+                font-size: 14px;
+            }
+            .refresh-btn {
+                bottom: 20px;
+                right: 20px;
+                width: 52px;
+                height: 52px;
+                font-size: 20px;
+            }
+            .footer {
+                border-radius: 12px;
+                padding: 18px;
+            }
+            .status-info {
+                font-size: 13px;
+                line-height: 1.4;
+            }
+            .mobile-phone-selector {
+                padding: 12px;
+                margin-bottom: 15px;
+            }
+            .mobile-phone-selector select {
+                padding: 16px;
+                font-size: 17px;
+            }
+        }
+        
+        /* 超小屏幕优化 */
+        @media (max-width: 360px) {
+            body {
+                padding: 10px;
+            }
+            .header h1 {
+                font-size: 1.8em;
+            }
+            .content-card {
+                padding: 16px;
+            }
+            .data-display {
+                padding: 15px;
+                font-size: 15px;
+            }
+            .btn {
+                min-height: 48px;
+                font-size: 15px;
+            }
+        }
+        
+        /* 高DPI屏幕优化 */
+        @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+            .data-display {
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+            }
+        }
+        
+        /* 暗色模式适配 */
+        @media (prefers-color-scheme: dark) {
+            .content-card {
+                background: rgba(30, 30, 30, 0.95);
+                color: #e0e0e0;
+            }
+            .data-display {
+                background: #2a2a2a;
+                color: #e0e0e0;
+                border-left-color: #667eea;
+            }
+            .mobile-phone-selector select {
+                background: #333;
+                color: #e0e0e0;
+                border-color: rgba(102, 126, 234, 0.5);
+            }
+        }
     </style>
 </head>
 <body>
-    ${users.length > 1 ? `
-    <div class="phone-selector" id="phoneSelector">
-        <button class="toggle-btn" onclick="toggleSelector()" title="折叠/展开">◀</button>
-        <div class="selector-content">
-            <h3>📱 手机号</h3>
-            ${users.map(user => `
-                <a href="?phone=${user.phonenum}" class="phone-option ${currentUser === user.phonenum ? 'active' : ''}" 
-                   data-phone="${user.phonenum}">
-                    ${user.displayName}
-                </a>
-            `).join('')}
-        </div>
-    </div>
-    ` : ''}
-    
     <div class="container">
         <div class="header">
             <h1>📱 ${title}</h1>
-            <div class="subtitle">实时查询 · 数据可视化 · 智能分析</div>
+            <div class="subtitle">实时查询 · 美观显示 · 多用户支持</div>
         </div>
         
-        <div class="actions">
-            <a href="/query?refresh=1" class="btn btn-primary">🔄 基础查询</a>
-            <a href="/enhanced?refresh=1" class="btn btn-primary">✨ 增强查询</a>
-            <a href="/json" class="btn btn-secondary">📊 原始数据</a>
-            <a href="/status" class="btn btn-secondary">⚡ 系统状态</a>
+        <!-- 桌面端手机号选择器 -->
+        ${users.length > 1 ? `
+        <div class="phone-selector" id="phoneSelector">
+            <button class="toggle-btn" onclick="toggleSelector()">◀</button>
+            <div class="selector-content">
+                <h3>选择号码</h3>
+                ${users.map(user => `
+                    <a href="?phone=${user.phonenum}" 
+                       class="phone-option ${currentUser === user.phonenum ? 'active' : ''}"
+                       data-phone="${user.phonenum}">
+                        ${user.displayName}
+                    </a>
+                `).join('')}
+            </div>
         </div>
+        ` : ''}
+        
+        <!-- 移动端手机号选择器 -->
+        ${users.length > 1 ? `
+        <div class="mobile-phone-selector">
+            <select onchange="switchPhoneNumber(this.value)">
+                ${users.map(user => `
+                    <option value="${user.phonenum}" ${currentUser === user.phonenum ? 'selected' : ''}>
+                        ${user.displayName}
+                    </option>
+                `).join('')}
+            </select>
+        </div>
+        ` : ''}
         
         <div class="content-card">
+            <div class="actions">
+                <a href="/query${currentUser ? '?phone=' + currentUser : ''}" class="btn btn-primary">📊 基础查询</a>
+                <a href="/enhanced${currentUser ? '?phone=' + currentUser : ''}" class="btn btn-primary">🚀 增强查询</a>
+                <a href="/json${currentUser ? '?phone=' + currentUser : ''}" class="btn btn-secondary">📋 JSON数据</a>
+                <a href="/status" class="btn btn-secondary">🔍 服务状态</a>
+            </div>
+            
             <div class="data-display">${content}</div>
         </div>
         
         <div class="footer">
             <div class="quick-links">
-                <a href="/query" class="quick-link">📱 基础</a>
-                <a href="/enhanced" class="quick-link">✨ 增强</a>
-                <a href="/json" class="quick-link">📊 JSON</a>
-                <a href="/status" class="quick-link">⚡ 状态</a>
-                <a href="/clear-cache" class="quick-link" onclick="return confirm('确定要清除缓存吗？')">🗑️ 清缓存</a>
+                <a href="/query?refresh=1${currentUser ? '&phone=' + currentUser : ''}" class="quick-link">🔄 强制刷新</a>
+                <a href="/clear-cache" class="quick-link">🗑️ 清空缓存</a>
+                <a href="/api/query" class="quick-link">🔗 API接口</a>
             </div>
             <div class="status-info">
-                更新时间: ${new Date().toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})} | 
-                服务版本: 2.0.0
+                服务版本: 2.0.0 Enhanced | 缓存时间: 2分钟<br>
+                服务时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
             </div>
         </div>
     </div>
@@ -340,18 +537,26 @@ export function generateMainPage(content: string, title: string = '电信套餐�
         // 手机号选择器控制
         function toggleSelector() {
             const selector = document.getElementById('phoneSelector');
-            const toggleBtn = selector.querySelector('.toggle-btn');
-            const content = selector.querySelector('.selector-content');
+            const toggleBtn = selector?.querySelector('.toggle-btn');
+            const content = selector?.querySelector('.selector-content');
             
-            if (selector.classList.contains('collapsed')) {
+            if (selector?.classList.contains('collapsed')) {
                 selector.classList.remove('collapsed');
-                toggleBtn.innerHTML = '◀';
-                content.style.display = 'block';
+                if (toggleBtn) toggleBtn.innerHTML = '◀';
+                if (content) content.style.display = 'block';
             } else {
-                selector.classList.add('collapsed');
-                toggleBtn.innerHTML = '▶';
-                content.style.display = 'none';
+                selector?.classList.add('collapsed');
+                if (toggleBtn) toggleBtn.innerHTML = '▶';
+                if (content) content.style.display = 'none';
             }
+        }
+        
+        // 移动端手机号切换
+        function switchPhoneNumber(phonenum) {
+            const currentPath = window.location.pathname;
+            const currentSearch = new URLSearchParams(window.location.search);
+            currentSearch.set('phone', phonenum);
+            window.location.href = currentPath + '?' + currentSearch.toString();
         }
         
         // 自动刷新功能
@@ -399,10 +604,28 @@ export function generateMainPage(content: string, title: string = '电信套餐�
                     window.location.href = currentPath + '?' + currentSearch.toString();
                 });
             });
+            
+            // 防止双击缩放
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function (event) {
+                const now = (new Date()).getTime();
+                if (now - lastTouchEnd <= 300) {
+                    event.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
         });
+        
+        // 性能优化：减少重绘
+        if (window.requestIdleCallback) {
+            window.requestIdleCallback(() => {
+                document.body.style.opacity = '1';
+            });
+        }
     </script>
 </body>
-</html>`;
+</html>
+`;
 }
 
 export function generateJsonPage(data: any): string {

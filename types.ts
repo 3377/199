@@ -130,9 +130,10 @@ export interface UserConfig {
 // 多用户配置类型
 export interface MultiUserConfig {
   users: UserConfig[];
+  defaultUser: string;
   apiBase: string;
   cacheTime: number;
-  defaultUser: string;
+  webPassword?: string;
 }
 
 // 环境变量配置

@@ -1,10 +1,11 @@
 import type { ApiResponse, UserConfig, MultiUserConfig } from './types.ts';
-import { parseMultiUserConfig, getUserConfig, validateConfig, maskPhoneNumber } from './utils.ts';
+import { maskPhoneNumber } from './utils.ts';
 import { EnhancedTelecomClient } from './telecom.ts';
 import { formatter } from './formatter.ts';
 import { getCacheManager } from './cache.ts';
 import { authManager } from './auth.ts';
 import { generateMainPage, generateJsonPage } from './templates.ts';
+import { loadConfig, getConfigManager } from './config-manager.ts';
 
 /**
  * 增强版电信套餐查询格式化服务
@@ -15,7 +16,8 @@ let multiConfig: MultiUserConfig;
 let telecomClients: Map<string, EnhancedTelecomClient> = new Map();
 
 try {
-  multiConfig = parseMultiUserConfig();
+  // 使用新的配置管理器加载配置
+  multiConfig = await loadConfig();
   
   // 为每个用户创建客户端
   for (const user of multiConfig.users) {
@@ -203,18 +205,34 @@ async function handleStatus(): Promise<ApiResponse> {
       }
     }
     
+    // 获取配置管理器状态
+    const configManager = await getConfigManager();
+    const configInfo = await configManager.getConfigForManagement();
+    const envChanged = await configManager.hasEnvConfigChanged();
+    
     const statusData = {
-      service: '电信套餐查询格式化服务',
-      version: '2.0.0',
-      timestamp: new Date().toISOString(),
-      users: multiConfig.users.length,
+      service: {
+        status: 'running',
+        version: '2.0.0 Enhanced',
+        uptime: 'N/A',
+        timestamp: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+      },
+      config: {
+        userCount: multiConfig.users.length,
+        defaultUser: maskPhoneNumber(multiConfig.defaultUser),
+        apiBase: multiConfig.apiBase,
+        cacheTime: multiConfig.cacheTime,
+        hasWebPassword: !!multiConfig.webPassword,
+        kvConfigExists: configInfo.hasKvConfig,
+        envConfigExists: configInfo.hasEnvConfig,
+        envConfigChanged: envChanged,
+        lastSync: configInfo.lastSync
+      },
       cache: {
-        healthy: cacheHealth.isHealthy,
-        latency: cacheHealth.latency,
+        health: cacheHealth,
         stats: cacheStats
       },
-      telecom: telecomStatuses,
-      overall: cacheHealth.isHealthy && Object.values(telecomStatuses).some((status: any) => status.overall)
+      telecom: telecomStatuses
     };
     
     return {
@@ -240,7 +258,7 @@ async function handleClearCache(): Promise<ApiResponse> {
     
     return {
       success: true,
-      data: '缓存已清空',
+      data: '✅ 缓存已清除',
       cached: false
     };
   } catch (error) {
@@ -253,54 +271,249 @@ async function handleClearCache(): Promise<ApiResponse> {
   }
 }
 
-// POST查询处理函数
-async function handlePostQuery(request: Request): Promise<ApiResponse> {
+// 配置管理处理函数
+async function handleConfigManagement(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const method = request.method;
+  
   try {
-    let postData: any = {};
-    const contentType = request.headers.get('content-type') || '';
+    const configManager = await getConfigManager();
     
-    if (contentType.includes('application/json')) {
-      postData = await request.json();
-    } else if (contentType.includes('application/x-www-form-urlencoded')) {
-      const formData = await request.formData();
-      for (const [key, value] of formData.entries()) {
-        postData[key] = value.toString();
+    if (method === 'GET') {
+      // 获取配置信息
+      const configInfo = await configManager.getConfigForManagement();
+      
+      const html = `
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配置管理 - 电信套餐查询</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        h1 { color: #667eea; margin-bottom: 20px; text-align: center; }
+        h2 { color: #555; margin: 20px 0 10px 0; }
+        .config-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status-success { background: #d4edda; color: #155724; }
+        .status-warning { background: #fff3cd; color: #856404; }
+        .status-info { background: #d1ecf1; color: #0c5460; }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        pre { background: #f1f3f4; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 13px; }
+        .back-link { margin-bottom: 20px; }
+        .back-link a { color: #667eea; text-decoration: none; }
+        .back-link a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="back-link">
+            <a href="/">← 返回主页</a>
+        </div>
+        
+        <h1>⚙️ 配置管理</h1>
+        
+        <h2>KV存储配置 ${configInfo.hasKvConfig ? '<span class="status-badge status-success">已配置</span>' : '<span class="status-badge status-warning">未配置</span>'}</h2>
+        <div class="config-section">
+            ${configInfo.kvConfig ? `
+                <p><strong>手机号:</strong> ${configInfo.kvConfig.phoneNumbers}</p>
+                <p><strong>密码:</strong> ${configInfo.kvConfig.passwords}</p>
+                <p><strong>API地址:</strong> ${configInfo.kvConfig.apiBase || 'https://dx.ll.sd'}</p>
+                <p><strong>缓存时间:</strong> ${configInfo.kvConfig.cacheTime || 2} 分钟</p>
+                <p><strong>Web密码:</strong> ${configInfo.kvConfig.webPassword ? '已设置' : '未设置'}</p>
+                <p><strong>最后同步:</strong> ${configInfo.lastSync || '未知'}</p>
+            ` : '<p>KV存储中暂无配置数据</p>'}
+            
+            <div style="margin-top: 10px;">
+                <button class="btn btn-warning" onclick="resyncFromEnv()">🔄 从环境变量同步</button>
+                <button class="btn btn-danger" onclick="clearKvConfig()">🗑️ 清除KV配置</button>
+            </div>
+        </div>
+        
+        <h2>环境变量配置 ${configInfo.hasEnvConfig ? '<span class="status-badge status-success">已配置</span>' : '<span class="status-badge status-warning">未配置</span>'}</h2>
+        <div class="config-section">
+            ${configInfo.envConfig ? `
+                <p><strong>手机号:</strong> ${configInfo.envConfig.phoneNumbers}</p>
+                <p><strong>密码:</strong> ${configInfo.envConfig.passwords}</p>
+                <p><strong>API地址:</strong> ${configInfo.envConfig.apiBase || 'https://dx.ll.sd'}</p>
+                <p><strong>缓存时间:</strong> ${configInfo.envConfig.cacheTime || 2} 分钟</p>
+                <p><strong>Web密码:</strong> ${configInfo.envConfig.webPassword ? '已设置' : '未设置'}</p>
+            ` : '<p>环境变量未配置完整</p>'}
+        </div>
+        
+        <h2>操作说明</h2>
+        <div class="config-section">
+            <p><strong>配置优先级:</strong> KV存储 → 环境变量</p>
+            <p><strong>自动同步:</strong> 首次启动时会自动从环境变量同步到KV</p>
+            <p><strong>手动同步:</strong> 点击"从环境变量同步"按钮可重新同步</p>
+            <p><strong>在线编辑:</strong> 可以直接在KV存储中编辑配置（需要通过API）</p>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="/" class="btn btn-primary">返回主页</a>
+            <a href="/status" class="btn btn-primary">查看状态</a>
+        </div>
+    </div>
+    
+    <script>
+        async function resyncFromEnv() {
+            if (!confirm('确定要从环境变量重新同步配置吗？这会覆盖当前KV配置。')) return;
+            
+            try {
+                const response = await fetch('/config/sync', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ 配置同步成功！');
+                    location.reload();
+                } else {
+                    alert('❌ 配置同步失败: ' + result.error);
+                }
+            } catch (error) {
+                alert('❌ 请求失败: ' + error.message);
+            }
+        }
+        
+        async function clearKvConfig() {
+            if (!confirm('确定要清除KV配置吗？这会导致服务回退到使用环境变量。')) return;
+            
+            try {
+                const response = await fetch('/config/clear', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ KV配置已清除！');
+                    location.reload();
+                } else {
+                    alert('❌ 清除失败: ' + result.error);
+                }
+            } catch (error) {
+                alert('❌ 请求失败: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>`;
+      
+      return new Response(html, { 
+        headers: { 'Content-Type': 'text/html; charset=utf-8' } 
+      });
+      
+    } else if (method === 'POST') {
+      const action = url.pathname.split('/').pop();
+      
+      if (action === 'sync') {
+        // 重新从环境变量同步
+        await configManager.resyncFromEnv();
+        return new Response(JSON.stringify({ success: true, message: '配置已同步' }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } else if (action === 'clear') {
+        // 清除KV配置
+        const cleared = await configManager.clearKvConfig();
+        return new Response(JSON.stringify({ 
+          success: cleared, 
+          message: cleared ? '配置已清除' : '清除失败' 
+        }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } else if (action === 'update') {
+        // 更新配置（从请求体获取新配置）
+        const body = await request.json();
+        await configManager.updateConfig(body);
+        return new Response(JSON.stringify({ success: true, message: '配置已更新' }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
     }
     
-    const { phonenum, enhanced = false, format = 'formatted' } = postData;
+    return new Response('Not Found', { status: 404 });
     
-    if (!phonenum) {
+  } catch (error) {
+    console.error('❌ 配置管理处理失败:', error);
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: error.message 
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+// POST查询处理函数
+async function handlePostQuery(request: Request): Promise<ApiResponse> {
+  try {
+    const body = await request.json();
+    const { phonenum, password, enhanced = false } = body;
+    
+    if (!phonenum || !password) {
       return {
         success: false,
-        error: '请提供手机号参数 (phonenum)',
+        error: '请提供手机号和密码',
         cached: false
       };
     }
     
-    // 验证手机号是否在配置中
-    const userConfig = getUserConfig(phonenum);
-    if (!userConfig) {
+    // 验证手机号和密码是否在配置中
+    const userConfig = multiConfig.users.find(user => user.phonenum === phonenum);
+    if (!userConfig || userConfig.password !== password) {
       return {
         success: false,
-        error: `手机号 ${maskPhoneNumber(phonenum)} 未在配置中`,
+        error: '手机号或密码错误',
         cached: false,
-        phonenum
+        phonenum: maskPhoneNumber(phonenum)
       };
     }
     
-    // 根据format参数决定返回格式
-    if (format === 'json') {
-      const result = await handleJsonQuery(phonenum);
-      return {
-        ...result,
-        data: result.success ? JSON.parse(result.data || '{}') : result.data
-      };
-    } else {
-      // 返回格式化文本
-      const result = await handleQuery(enhanced === true || enhanced === 'true', false, phonenum);
-      return result;
-    }
+    // 使用现有的查询逻辑
+    return await handleQuery(enhanced, false, phonenum);
+    
   } catch (error) {
     console.error('❌ POST查询处理失败:', error);
     return {
@@ -311,45 +524,101 @@ async function handlePostQuery(request: Request): Promise<ApiResponse> {
   }
 }
 
-// 从cookie中获取session ID
+// 获取会话cookie
 function getSessionFromCookie(request: Request): string | null {
-  const cookie = request.headers.get('cookie');
-  if (!cookie) return null;
+  const cookieHeader = request.headers.get('Cookie');
+  if (!cookieHeader) return null;
   
-  const match = cookie.match(/session=([^;]+)/);
-  return match ? match[1] : null;
+  const cookies = cookieHeader.split(';').map(c => c.trim());
+  const sessionCookie = cookies.find(c => c.startsWith('session='));
+  
+  return sessionCookie ? sessionCookie.split('=')[1] : null;
 }
 
-// 设置session cookie
+// 设置会话cookie
 function setSessionCookie(sessionId: string): string {
-  return `session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400`;
+  const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24小时
+  return `session=${sessionId}; Path=/; Expires=${expires.toUTCString()}; HttpOnly; SameSite=Strict`;
 }
 
-// 检查认证
+// 认证检查
 function requireAuth(request: Request): { authenticated: boolean; sessionId?: string } {
-  const sessionId = getSessionFromCookie(request);
-  if (!sessionId) {
-    return { authenticated: false };
+  if (!multiConfig.webPassword) {
+    return { authenticated: true };
   }
   
-  const isValid = authManager.validateSession(sessionId);
-  return { authenticated: isValid, sessionId };
+  const sessionId = getSessionFromCookie(request);
+  if (sessionId && authManager.validateSession(sessionId)) {
+    return { authenticated: true, sessionId };
+  }
+  
+  return { authenticated: false };
 }
 
-// 处理登录
+// 登录处理
 async function handleLogin(request: Request): Promise<Response> {
   if (request.method === 'GET') {
-    return new Response(authManager.generateLoginPage(), {
-      status: 200,
-      headers: { 'Content-Type': 'text/html; charset=utf-8' }
+    const loginHtml = `
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 电信套餐查询</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 { text-align: center; color: #667eea; margin-bottom: 30px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; color: #555; font-weight: 500; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+        input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .btn { width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; transition: all 0.3s ease; }
+        .btn:hover { background: #5a6fd8; transform: translateY(-1px); }
+        .error { color: #dc3545; margin-top: 10px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h1>🔐 用户登录</h1>
+        <form method="POST" action="/login">
+            <div class="form-group">
+                <label for="password">访问密码</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit" class="btn">登录</button>
+            <div class="error" id="error" style="display: none;"></div>
+        </form>
+    </div>
+</body>
+</html>`;
+    
+    return new Response(loginHtml, { 
+      headers: { 'Content-Type': 'text/html; charset=utf-8' } 
     });
   }
   
   if (request.method === 'POST') {
     const formData = await request.formData();
-    const password = formData.get('password')?.toString() || '';
+    const password = formData.get('password')?.toString();
     
-    if (authManager.validatePassword(password)) {
+    if (password === multiConfig.webPassword) {
       const sessionId = authManager.createSession();
       return new Response('', {
         status: 302,
@@ -359,200 +628,125 @@ async function handleLogin(request: Request): Promise<Response> {
         }
       });
     } else {
-      return new Response(authManager.generateLoginPage('密码错误，请重试'), {
-        status: 401,
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
-      });
+      return new Response('Unauthorized', { status: 401 });
     }
   }
   
-  return new Response('Method not allowed', { status: 405 });
+  return new Response('Method Not Allowed', { status: 405 });
 }
 
-// HTTP请求处理器
+// 主请求处理函数
 async function handleRequest(request: Request): Promise<Response> {
   const url = new URL(request.url);
-  const pathname = url.pathname;
   const method = request.method;
   
-  // CORS头
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  };
-  
-  // 处理OPTIONS预检请求
-  if (method === 'OPTIONS') {
-    return new Response(null, {
-      status: 200,
-      headers: corsHeaders
-    });
+  // 处理登录页面（不需要认证）
+  if (url.pathname === '/login') {
+    return await handleLogin(request);
   }
   
-  // 处理登录相关路径
-  if (pathname === '/auth/login' || pathname === '/login') {
-    return handleLogin(request);
+  // 认证检查
+  const authResult = requireAuth(request);
+  if (!authResult.authenticated) {
+    return Response.redirect(new URL('/login', request.url).toString(), 302);
   }
-  
-  // 检查认证
-  const auth = requireAuth(request);
-  if (!auth.authenticated) {
-    return new Response('', {
-      status: 302,
-      headers: { 'Location': '/auth/login' }
-    });
-  }
-  
-  // 检查是否强制刷新
-  const forceRefresh = url.searchParams.has('refresh') || url.searchParams.has('force');
-  // 获取指定的手机号
-  const phonenum = url.searchParams.get('phone') || undefined;
-  
-  let result: ApiResponse;
-  let responseType: 'html' | 'json' | 'text' = 'html';
-  let title = '电信套餐查询';
   
   try {
-    switch (pathname) {
-      case '/':
-        // 重定向到基础查询
-        const redirectUrl = phonenum ? `/query?phone=${phonenum}` : '/query';
-        return new Response('', {
-          status: 302,
-          headers: { 'Location': redirectUrl }
+    // 配置管理相关路由
+    if (url.pathname.startsWith('/config')) {
+      return await handleConfigManagement(request);
+    }
+    
+    // 获取查询参数
+    const phoneParam = url.searchParams.get('phone');
+    const refreshParam = url.searchParams.get('refresh');
+    const forceRefresh = refreshParam === '1' || refreshParam === 'true';
+    
+    // 路由处理
+    if (url.pathname === '/' && method === 'GET') {
+      const result = await handleQuery(false, false, phoneParam || undefined);
+      const content = result.success ? result.data : `❌ 查询失败: ${result.error}`;
+      const html = generateMainPage(content, '电信套餐查询', multiConfig.users, phoneParam ?? multiConfig.defaultUser);
+      return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+    }
+    
+    if (url.pathname === '/query' && method === 'GET') {
+      const result = await handleQuery(false, forceRefresh, phoneParam || undefined);
+      const content = result.success ? result.data : `❌ 查询失败: ${result.error}`;
+      const html = generateMainPage(content, '基础查询结果', multiConfig.users, phoneParam ?? multiConfig.defaultUser);
+      return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+    }
+    
+    if (url.pathname === '/enhanced' && method === 'GET') {
+      const result = await handleQuery(true, forceRefresh, phoneParam || undefined);
+      const content = result.success ? result.data : `❌ 查询失败: ${result.error}`;
+      const html = generateMainPage(content, '增强查询结果', multiConfig.users, phoneParam ?? multiConfig.defaultUser);
+      return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+    }
+    
+    if (url.pathname === '/json' && method === 'GET') {
+      const result = await handleJsonQuery(phoneParam || undefined);
+      if (result.success) {
+        const html = generateJsonPage(result.data);
+        return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      } else {
+        return new Response(JSON.stringify({ error: result.error }), { 
+          status: 500, 
+          headers: { 'Content-Type': 'application/json' } 
         });
-        
-      case '/query':
-        // 基础查询接口
-        result = await handleQuery(false, forceRefresh, phonenum);
-        title = '基础套餐查询';
-        responseType = 'html';
-        break;
-        
-      case '/enhanced':
-        // 增强查询接口
-        result = await handleQuery(true, forceRefresh, phonenum);
-        title = '增强套餐查询';
-        responseType = 'html';
-        break;
-        
-      case '/json':
-        // JSON数据接口
-        result = await handleJsonQuery(phonenum);
-        responseType = 'json';
-        break;
-        
-      case '/status':
-      case '/health':
-        // 状态检查接口
-        result = await handleStatus();
-        title = '系统状态';
-        responseType = url.searchParams.has('format') && url.searchParams.get('format') === 'json' ? 'json' : 'html';
-        break;
-        
-      case '/api/query':
-        // POST API查询接口
-        if (method === 'POST') {
-          result = await handlePostQuery(request);
-          responseType = 'json';
-        } else {
-          result = {
-            success: false,
-            error: '此接口仅支持POST方法',
-            cached: false
-          };
-        }
-        break;
-        
-      case '/clear-cache':
-        // 清除缓存接口
-        if (method === 'POST' || method === 'GET') {
-          result = await handleClearCache();
-          title = '缓存管理';
-          responseType = 'html';
-        } else {
-          result = {
-            success: false,
-            error: '此接口仅支持GET/POST方法',
-            cached: false
-          };
-        }
-        break;
-        
-      default:
-        result = {
-          success: false,
-          error: `未知的接口路径: ${pathname}\n\n可用接口:\n- /query (基础查询)\n- /enhanced (增强查询)\n- /json (JSON数据)\n- /status (系统状态)\n- /clear-cache (清除缓存)`,
-          cached: false
-        };
-        responseType = 'html';
-        title = '页面未找到';
+      }
     }
+    
+    if (url.pathname === '/status' && method === 'GET') {
+      const result = await handleStatus();
+      if (result.success) {
+        const html = generateJsonPage(result.data);
+        return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      } else {
+        return new Response(JSON.stringify({ error: result.error }), { 
+          status: 500, 
+          headers: { 'Content-Type': 'application/json' } 
+        });
+      }
+    }
+    
+    if (url.pathname === '/clear-cache' && method === 'GET') {
+      const result = await handleClearCache();
+      const content = result.success ? result.data : `❌ 操作失败: ${result.error}`;
+      const html = generateMainPage(content, '缓存清理结果', multiConfig.users, phoneParam ?? multiConfig.defaultUser);
+      return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+    }
+    
+    // API路由
+    if (url.pathname === '/api/query' && (method === 'GET' || method === 'POST')) {
+      let result: ApiResponse;
+      
+      if (method === 'GET') {
+        const phoneParam = url.searchParams.get('phonenum');
+        const enhanced = url.searchParams.get('enhanced') === 'true';
+        result = await handleQuery(enhanced, false, phoneParam || undefined);
+      } else {
+        result = await handlePostQuery(request);
+      }
+      
+      return new Response(JSON.stringify(result), { 
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+    
+    return new Response('Not Found', { status: 404 });
+    
   } catch (error) {
-    console.error('❌ 请求处理异常:', error);
-    result = {
-      success: false,
-      error: '服务器内部错误',
-      cached: false
-    };
+    console.error('❌ 请求处理失败:', error);
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: error.message 
+    }), { 
+      status: 500, 
+      headers: { 'Content-Type': 'application/json' } 
+    });
   }
-  
-  // 构建响应
-  const status = result.success ? 200 : (pathname === '/clear-cache' && result.success === false) ? 404 : 400;
-  
-  let responseData: string;
-  let contentType: string;
-  
-  if (responseType === 'json') {
-    // JSON响应
-    if (pathname === '/json') {
-      const cacheManager = await getCacheManager();
-      const targetPhone = phonenum || multiConfig.defaultUser;
-      const cachedData = await cacheManager.get(targetPhone);
-      const jsonData = cachedData || { error: '没有可用数据' };
-      responseData = generateJsonPage(jsonData);
-      contentType = 'text/html; charset=utf-8';
-    } else {
-      responseData = result.success ? (result.data || '') : JSON.stringify({error: result.error}, null, 2);
-      contentType = 'application/json; charset=utf-8';
-    }
-  } else if (responseType === 'html') {
-    // HTML响应
-    const content = result.success ? (result.data || '') : (result.error || '');
-    const currentUser = result.phonenum || phonenum;
-    responseData = generateMainPage(content, title, multiConfig.users, currentUser);
-    contentType = 'text/html; charset=utf-8';
-  } else {
-    // 纯文本响应
-    responseData = result.success ? (result.data || '') : (result.error || '');
-    contentType = 'text/plain; charset=utf-8';
-  }
-  
-  const headers = {
-    ...corsHeaders,
-    'Content-Type': contentType,
-    'X-Cached': result.cached ? 'true' : 'false',
-    'X-Timestamp': new Date().toISOString()
-  };
-  
-  return new Response(responseData, {
-    status,
-    headers
-  });
 }
 
-// 启动服务器
-console.log('🎯 电信套餐查询格式化服务启动中...');
-console.log('📋 可用接口:');
-console.log('  GET  /query      - 基础套餐查询（兼容原版格式）');
-console.log('  GET  /enhanced   - 增强套餐查询（进度条+统计分析）');
-console.log('  GET  /json       - 原始JSON数据');
-console.log('  GET  /status     - 服务状态检查');
-console.log('  POST /clear-cache - 清除缓存');
-console.log('🌐 支持CORS，可直接在浏览器中访问');
-
-// Deno Deploy 兼容方式
-export default {
-  fetch: handleRequest
-}; 
+// 导出处理函数
+export default { fetch: handleRequest }; 
