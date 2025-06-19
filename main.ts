@@ -18,7 +18,7 @@ try {
   console.log(`🚀 服务启动成功，目标手机号: ${config.phonenum}`);
 } catch (error) {
   console.error('❌ 服务启动失败:', error);
-  Deno.exit(1);
+  throw new Error(`服务初始化失败: ${error.message}`);
 }
 
 // 主要查询处理函数
@@ -289,17 +289,15 @@ async function handleRequest(request: Request): Promise<Response> {
 
 // 启动服务器
 console.log('🎯 电信套餐查询格式化服务启动中...');
-
-Deno.serve({
-  port: parseInt(Deno.env.get('PORT') || '8000'),
-  hostname: '0.0.0.0'
-}, handleRequest);
-
-console.log(`✅ 服务已启动，监听端口: ${Deno.env.get('PORT') || '8000'}`);
 console.log('📋 可用接口:');
 console.log('  GET  /query      - 基础套餐查询（兼容原版格式）');
 console.log('  GET  /enhanced   - 增强套餐查询（进度条+统计分析）');
 console.log('  GET  /json       - 原始JSON数据');
 console.log('  GET  /status     - 服务状态检查');
 console.log('  POST /clear-cache - 清除缓存');
-console.log('🌐 支持CORS，可直接在浏览器中访问'); 
+console.log('🌐 支持CORS，可直接在浏览器中访问');
+
+// Deno Deploy 兼容方式
+export default {
+  fetch: handleRequest
+}; 
