@@ -186,7 +186,7 @@ export function getRandomPoetry(): string {
 
 // 生成使用提醒
 export function getUsageReminder(balanceStatus: string, flowTrend: string, remainingDays: number): string {
-  const reminders = [];
+  const reminders: string[] = [];
   
   if (balanceStatus === 'critical') {
     reminders.push('⚠️ 余额不足，建议及时充值');
@@ -207,45 +207,102 @@ export function getUsageReminder(balanceStatus: string, flowTrend: string, remai
   return reminders.length > 0 ? reminders.join(' | ') : '✅ 一切正常，继续享受服务';
 }
 
-// 验证环境变量
-export function validateConfig(): { phonenum: string; password: string; apiBase: string; cacheTime: number } {
-  // 使用标准方式获取环境变量，兼容Deno Deploy
-  let phonenum: string | undefined;
-  let password: string | undefined;
+import type { UserConfig, MultiUserConfig } from './types.ts';
+
+// 解析多用户配置
+export function parseMultiUserConfig(): MultiUserConfig {
+  let phonenums: string | undefined;
+  let passwords: string | undefined;
   let apiBase: string;
   let cacheTime: number;
   
   try {
-    phonenum = Deno.env.get('TELECOM_PHONENUM');
-    password = Deno.env.get('TELECOM_PASSWORD');
-    apiBase = Deno.env.get('API_BASE') || 'https://dx.ll.sd';
-    cacheTime = parseInt(Deno.env.get('CACHE_TIME') || '600000');
+    phonenums = globalThis.Deno?.env?.get?.('TELECOM_PHONENUM');
+    passwords = globalThis.Deno?.env?.get?.('TELECOM_PASSWORD');
+    apiBase = globalThis.Deno?.env?.get?.('API_BASE') || 'https://dx.ll.sd';
+    cacheTime = parseInt(globalThis.Deno?.env?.get?.('CACHE_TIME') || '120000');
   } catch {
-    // 如果Deno.env不可用，尝试其他方式
-    phonenum = undefined;
-    password = undefined;
+    // 如果Deno.env不可用，使用默认值
+    phonenums = undefined;
+    passwords = undefined;
     apiBase = 'https://dx.ll.sd';
-    cacheTime = 600000;
+    cacheTime = 120000;
   }
   
-  if (!phonenum || !password) {
-    throw new Error('请设置环境变量 TELECOM_PHONENUM 和 TELECOM_PASSWORD');
+  if (!phonenums) {
+    throw new Error('请设置环境变量 TELECOM_PHONENUM');
   }
   
-  if (!/^1[3-9]\d{9}$/.test(phonenum)) {
-    throw new Error('手机号格式不正确');
+  if (!passwords) {
+    throw new Error('请设置环境变量 TELECOM_PASSWORD');
   }
   
-  if (!/^\d{6}$/.test(password)) {
-    throw new Error('密码必须为6位数字');
+  // 解析多个手机号和密码
+  const phonenumList = phonenums.split(',').map(p => p.trim()).filter(p => p);
+  const passwordList = passwords.split(',').map(p => p.trim()).filter(p => p);
+  
+  if (phonenumList.length === 0) {
+    throw new Error('手机号列表不能为空');
+  }
+  
+  if (passwordList.length === 0) {
+    throw new Error('密码列表不能为空');
+  }
+  
+  if (phonenumList.length !== passwordList.length) {
+    throw new Error(`手机号数量(${phonenumList.length})与密码数量(${passwordList.length})不匹配`);
+  }
+  
+  const users: UserConfig[] = [];
+  
+  for (let i = 0; i < phonenumList.length; i++) {
+    const phonenum = phonenumList[i];
+    const password = passwordList[i];
+    
+    if (!/^1[3-9]\d{9}$/.test(phonenum)) {
+      throw new Error(`手机号格式不正确: ${phonenum}`);
+    }
+    
+    if (!/^\d{6}$/.test(password)) {
+      throw new Error(`密码必须为6位数字: ${maskPhoneNumber(phonenum)}`);
+    }
+    
+    users.push({
+      phonenum,
+      password,
+      displayName: maskPhoneNumber(phonenum)
+    });
   }
   
   return {
-    phonenum,
-    password,
+    users,
     apiBase,
-    cacheTime
+    cacheTime,
+    defaultUser: users[0].phonenum
   };
+}
+
+// 兼容旧版单用户配置验证
+export function validateConfig(): { phonenum: string; password: string; apiBase: string; cacheTime: number } {
+  const multiConfig = parseMultiUserConfig();
+  const defaultUser = multiConfig.users[0];
+  
+  return {
+    phonenum: defaultUser.phonenum,
+    password: defaultUser.password,
+    apiBase: multiConfig.apiBase,
+    cacheTime: multiConfig.cacheTime
+  };
+}
+
+// 根据手机号获取用户配置
+export function getUserConfig(phonenum: string): UserConfig | null {
+  try {
+    const multiConfig = parseMultiUserConfig();
+    return multiConfig.users.find(user => user.phonenum === phonenum) || null;
+  } catch {
+    return null;
+  }
 }
 
 // 创建装饰性分隔线

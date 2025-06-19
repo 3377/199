@@ -116,6 +116,23 @@ export interface ApiResponse {
   data?: string;
   error?: string;
   cached?: boolean;
+  phonenum?: string;
+  timestamp?: string;
+}
+
+// 用户配置类型
+export interface UserConfig {
+  phonenum: string;
+  password: string;
+  displayName: string;
+}
+
+// 多用户配置类型
+export interface MultiUserConfig {
+  users: UserConfig[];
+  apiBase: string;
+  cacheTime: number;
+  defaultUser: string;
 }
 
 // 环境变量配置

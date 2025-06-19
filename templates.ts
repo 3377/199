@@ -1,5 +1,7 @@
-// HTML页面模板
-export function generateMainPage(content: string, title: string = '电信套餐查询'): string {
+import type { UserConfig } from './types.ts';
+
+// HTML页面模板  
+export function generateMainPage(content: string, title: string = '电信套餐查询', users: UserConfig[] = [], currentUser?: string): string {
   return `
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -156,41 +158,148 @@ export function generateMainPage(content: string, title: string = '电信套餐�
             transform: scale(1.1) rotate(180deg);
         }
         
+        /* 手机号选择器 */
+        .phone-selector {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transition: all 0.3s ease;
+            min-width: 160px;
+        }
+        .phone-selector.collapsed {
+            width: 60px;
+            padding: 15px 10px;
+        }
+        .phone-selector h3 {
+            margin: 0 0 15px 0;
+            font-size: 14px;
+            color: #333;
+            text-align: center;
+            font-weight: 500;
+        }
+        .phone-option {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 5px 0;
+            background: rgba(102, 126, 234, 0.1);
+            border: 2px solid transparent;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #667eea;
+            font-size: 13px;
+            font-weight: 500;
+            text-align: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .phone-option:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+            transform: translateX(3px);
+        }
+        .phone-option.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+        .phone-option.collapsed {
+            padding: 8px;
+            font-size: 12px;
+        }
+        .toggle-btn {
+            position: absolute;
+            right: -15px;
+            top: 10px;
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .toggle-btn:hover {
+            transform: scale(1.1);
+        }
+        
         /* 响应式设计 */
-        @media (max-width: 768px) {
-            body { padding: 15px; }
-            .header h1 { font-size: 2em; }
-            .content-card { padding: 25px; }
-            .data-display { 
-                font-size: 14px; 
-                padding: 20px;
-                overflow-x: auto;
-            }
-            .actions { gap: 10px; }
-            .btn { min-width: 100px; font-size: 13px; }
-            .quick-links { gap: 15px; }
-            .refresh-btn {
-                bottom: 20px;
-                right: 20px;
-                width: 50px;
-                height: 50px;
-                font-size: 20px;
-            }
-        }
-        @media (max-width: 480px) {
-            .header h1 { font-size: 1.8em; }
-            .content-card { padding: 20px; }
-            .data-display { 
-                font-size: 13px; 
-                padding: 15px;
-            }
-            .actions { flex-direction: column; align-items: center; }
-            .btn { width: 200px; }
-            .quick-links { flex-direction: column; gap: 10px; }
-        }
+                 @media (max-width: 768px) {
+             body { padding: 15px; }
+             .header h1 { font-size: 2em; }
+             .content-card { padding: 25px; }
+             .data-display { 
+                 font-size: 14px; 
+                 padding: 20px;
+                 overflow-x: auto;
+             }
+             .actions { gap: 10px; }
+             .btn { min-width: 100px; font-size: 13px; }
+             .quick-links { gap: 15px; }
+             .refresh-btn {
+                 bottom: 20px;
+                 right: 20px;
+                 width: 50px;
+                 height: 50px;
+                 font-size: 20px;
+             }
+             .phone-selector {
+                 left: 10px;
+                 transform: translateY(-50%) scale(0.9);
+             }
+         }
+                 @media (max-width: 480px) {
+             .header h1 { font-size: 1.8em; }
+             .content-card { padding: 20px; }
+             .data-display { 
+                 font-size: 13px; 
+                 padding: 15px;
+             }
+             .actions { flex-direction: column; align-items: center; }
+             .btn { width: 200px; }
+             .quick-links { flex-direction: column; gap: 10px; }
+             .phone-selector {
+                 position: relative;
+                 left: 0;
+                 top: 0;
+                 transform: none;
+                 margin-bottom: 20px;
+                 width: 100%;
+                 max-width: 300px;
+                 margin-left: auto;
+                 margin-right: auto;
+             }
+         }
     </style>
 </head>
 <body>
+    ${users.length > 1 ? `
+    <div class="phone-selector" id="phoneSelector">
+        <button class="toggle-btn" onclick="toggleSelector()" title="折叠/展开">◀</button>
+        <div class="selector-content">
+            <h3>📱 手机号</h3>
+            ${users.map(user => `
+                <a href="?phone=${user.phonenum}" class="phone-option ${currentUser === user.phonenum ? 'active' : ''}" 
+                   data-phone="${user.phonenum}">
+                    ${user.displayName}
+                </a>
+            `).join('')}
+        </div>
+    </div>
+    ` : ''}
+    
     <div class="container">
         <div class="header">
             <h1>📱 ${title}</h1>
@@ -228,6 +337,23 @@ export function generateMainPage(content: string, title: string = '电信套餐�
     </button>
     
     <script>
+        // 手机号选择器控制
+        function toggleSelector() {
+            const selector = document.getElementById('phoneSelector');
+            const toggleBtn = selector.querySelector('.toggle-btn');
+            const content = selector.querySelector('.selector-content');
+            
+            if (selector.classList.contains('collapsed')) {
+                selector.classList.remove('collapsed');
+                toggleBtn.innerHTML = '◀';
+                content.style.display = 'block';
+            } else {
+                selector.classList.add('collapsed');
+                toggleBtn.innerHTML = '▶';
+                content.style.display = 'none';
+            }
+        }
+        
         // 自动刷新功能
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('auto')) {
@@ -247,18 +373,32 @@ export function generateMainPage(content: string, title: string = '电信套餐�
                         break;
                     case '1':
                         e.preventDefault();
-                        window.location.href = '/query';
+                        window.location.href = '/query' + (urlParams.get('phone') ? '?phone=' + urlParams.get('phone') : '');
                         break;
                     case '2':
                         e.preventDefault();
-                        window.location.href = '/enhanced';
+                        window.location.href = '/enhanced' + (urlParams.get('phone') ? '?phone=' + urlParams.get('phone') : '');
                         break;
                     case '3':
                         e.preventDefault();
-                        window.location.href = '/json';
+                        window.location.href = '/json' + (urlParams.get('phone') ? '?phone=' + urlParams.get('phone') : '');
                         break;
                 }
             }
+        });
+        
+        // 手机号切换时保持当前页面
+        document.addEventListener('DOMContentLoaded', function() {
+            const phoneOptions = document.querySelectorAll('.phone-option');
+            phoneOptions.forEach(option => {
+                option.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const currentPath = window.location.pathname;
+                    const currentSearch = new URLSearchParams(window.location.search);
+                    currentSearch.set('phone', this.dataset.phone);
+                    window.location.href = currentPath + '?' + currentSearch.toString();
+                });
+            });
         });
     </script>
 </body>
