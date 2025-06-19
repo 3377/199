@@ -113,9 +113,9 @@ export interface CachedData {
 // API响应
 export interface ApiResponse {
   success: boolean;
-  data?: string;
+  data?: string | object;
   error?: string;
-  cached?: boolean;
+  cached: boolean;
   phonenum?: string;
   timestamp?: string;
 }

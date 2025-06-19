@@ -141,15 +141,16 @@ async function handleJsonQuery(phonenum?: string): Promise<ApiResponse> {
     const cachedData = await cacheManager.get(targetPhone);
     if (cachedData) {
       console.log(`📦 使用缓存JSON数据 (${maskPhoneNumber(targetPhone)})`);
+      const jsonData = {
+        summary: cachedData.summary,
+        fluxPackage: cachedData.fluxPackage,
+        importantData: cachedData.importantData,
+        shareUsage: cachedData.shareUsage,
+        timestamp: cachedData.timestamp
+      };
       return {
         success: true,
-        data: JSON.stringify({
-          summary: cachedData.summary,
-          fluxPackage: cachedData.fluxPackage,
-          importantData: cachedData.importantData,
-          shareUsage: cachedData.shareUsage,
-          timestamp: cachedData.timestamp
-        }, null, 2),
+        data: jsonData,
         cached: true,
         phonenum: targetPhone
       };
@@ -170,7 +171,7 @@ async function handleJsonQuery(phonenum?: string): Promise<ApiResponse> {
     
     return {
       success: true,
-      data: JSON.stringify(jsonData, null, 2),
+      data: jsonData,
       cached: false,
       phonenum: targetPhone
     };
@@ -237,7 +238,7 @@ async function handleStatus(): Promise<ApiResponse> {
     
     return {
       success: true,
-      data: JSON.stringify(statusData, null, 2),
+      data: statusData,
       cached: false
     };
   } catch (error) {
@@ -665,22 +666,22 @@ async function handleRequest(request: Request): Promise<Response> {
     // 路由处理
     if (url.pathname === '/' && method === 'GET') {
       const result = await handleQuery(false, false, phoneParam || undefined);
-      const content = result.success ? result.data : `❌ 查询失败: ${result.error}`;
-      const html = generateMainPage(content, '电信套餐查询', multiConfig.users, phoneParam ?? multiConfig.defaultUser);
+      const content = result.success ? result.data as string : `❌ 查询失败: ${result.error}`;
+      const html = generateMainPage(content, '电信套餐查询', multiConfig.users, phoneParam || multiConfig.defaultUser);
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
     
     if (url.pathname === '/query' && method === 'GET') {
       const result = await handleQuery(false, forceRefresh, phoneParam || undefined);
-      const content = result.success ? result.data : `❌ 查询失败: ${result.error}`;
-      const html = generateMainPage(content, '基础查询结果', multiConfig.users, phoneParam ?? multiConfig.defaultUser);
+      const content = result.success ? result.data as string : `❌ 查询失败: ${result.error}`;
+      const html = generateMainPage(content, '基础查询结果', multiConfig.users, phoneParam || multiConfig.defaultUser);
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
     
     if (url.pathname === '/enhanced' && method === 'GET') {
       const result = await handleQuery(true, forceRefresh, phoneParam || undefined);
-      const content = result.success ? result.data : `❌ 查询失败: ${result.error}`;
-      const html = generateMainPage(content, '增强查询结果', multiConfig.users, phoneParam ?? multiConfig.defaultUser);
+      const content = result.success ? result.data as string : `❌ 查询失败: ${result.error}`;
+      const html = generateMainPage(content, '增强查询结果', multiConfig.users, phoneParam || multiConfig.defaultUser);
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
     
@@ -712,8 +713,8 @@ async function handleRequest(request: Request): Promise<Response> {
     
     if (url.pathname === '/clear-cache' && method === 'GET') {
       const result = await handleClearCache();
-      const content = result.success ? result.data : `❌ 操作失败: ${result.error}`;
-      const html = generateMainPage(content, '缓存清理结果', multiConfig.users, phoneParam ?? multiConfig.defaultUser);
+      const content = result.success ? result.data as string : `❌ 操作失败: ${result.error}`;
+      const html = generateMainPage(content, '缓存清理结果', multiConfig.users, phoneParam || multiConfig.defaultUser);
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
     

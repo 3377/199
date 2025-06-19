@@ -1,7 +1,7 @@
 import type { UserConfig } from './types.ts';
 
 // HTML页面模板  
-export function generateMainPage(content: string, title: string = '电信套餐查询', users: UserConfig[] = [], currentUser?: string): string {
+export function generateMainPage(content: string, title: string = '电信套餐查询', users: UserConfig[] = [], currentUser: string = ''): string {
   return `
 <!DOCTYPE html>
 <html lang="zh-CN">
