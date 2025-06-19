@@ -3,6 +3,8 @@ import { validateConfig, maskPhoneNumber } from './utils.ts';
 import { EnhancedTelecomClient } from './telecom.ts';
 import { formatter } from './formatter.ts';
 import { getCacheManager } from './cache.ts';
+import { authManager } from './auth.ts';
+import { generateMainPage, generateJsonPage } from './templates.ts';
 
 /**
  * 增强版电信套餐查询格式化服务
@@ -22,19 +24,24 @@ try {
 }
 
 // 主要查询处理函数
-async function handleQuery(enhanced: boolean = false): Promise<ApiResponse> {
+async function handleQuery(enhanced: boolean = false, forceRefresh: boolean = false): Promise<ApiResponse> {
   try {
     const cacheManager = await getCacheManager();
     
-    // 尝试从缓存获取数据
-    const cachedData = await cacheManager.get(config.phonenum);
-    if (cachedData && cachedData.formattedText) {
-      console.log('📦 使用缓存数据');
-      return {
-        success: true,
-        data: cachedData.formattedText,
-        cached: true
-      };
+    // 检查是否强制刷新
+    if (!forceRefresh) {
+      // 尝试从缓存获取数据
+      const cachedData = await cacheManager.get(config.phonenum);
+      if (cachedData && cachedData.formattedText) {
+        console.log('📦 使用缓存数据');
+        return {
+          success: true,
+          data: cachedData.formattedText,
+          cached: true
+        };
+      }
+    } else {
+      console.log('🔄 强制刷新，忽略缓存');
     }
     
     console.log('🔍 缓存未命中，从API获取新数据');
@@ -190,6 +197,64 @@ async function handleClearCache(): Promise<ApiResponse> {
   }
 }
 
+// 从cookie中获取session ID
+function getSessionFromCookie(request: Request): string | null {
+  const cookie = request.headers.get('cookie');
+  if (!cookie) return null;
+  
+  const match = cookie.match(/session=([^;]+)/);
+  return match ? match[1] : null;
+}
+
+// 设置session cookie
+function setSessionCookie(sessionId: string): string {
+  return `session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400`;
+}
+
+// 检查认证
+function requireAuth(request: Request): { authenticated: boolean; sessionId?: string } {
+  const sessionId = getSessionFromCookie(request);
+  if (!sessionId) {
+    return { authenticated: false };
+  }
+  
+  const isValid = authManager.validateSession(sessionId);
+  return { authenticated: isValid, sessionId };
+}
+
+// 处理登录
+async function handleLogin(request: Request): Promise<Response> {
+  if (request.method === 'GET') {
+    return new Response(authManager.generateLoginPage(), {
+      status: 200,
+      headers: { 'Content-Type': 'text/html; charset=utf-8' }
+    });
+  }
+  
+  if (request.method === 'POST') {
+    const formData = await request.formData();
+    const password = formData.get('password')?.toString() || '';
+    
+    if (authManager.validatePassword(password)) {
+      const sessionId = authManager.createSession();
+      return new Response('', {
+        status: 302,
+        headers: {
+          'Location': '/',
+          'Set-Cookie': setSessionCookie(sessionId)
+        }
+      });
+    } else {
+      return new Response(authManager.generateLoginPage('密码错误，请重试'), {
+        status: 401,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+      });
+    }
+  }
+  
+  return new Response('Method not allowed', { status: 405 });
+}
+
 // HTTP请求处理器
 async function handleRequest(request: Request): Promise<Response> {
   const url = new URL(request.url);
@@ -211,40 +276,74 @@ async function handleRequest(request: Request): Promise<Response> {
     });
   }
   
+  // 处理登录相关路径
+  if (pathname === '/auth/login' || pathname === '/login') {
+    return handleLogin(request);
+  }
+  
+  // 检查认证
+  const auth = requireAuth(request);
+  if (!auth.authenticated) {
+    return new Response('', {
+      status: 302,
+      headers: { 'Location': '/auth/login' }
+    });
+  }
+  
+  // 检查是否强制刷新
+  const forceRefresh = url.searchParams.has('refresh') || url.searchParams.has('force');
+  
   let result: ApiResponse;
+  let responseType: 'html' | 'json' | 'text' = 'html';
+  let title = '电信套餐查询';
   
   try {
     switch (pathname) {
       case '/':
+        // 重定向到基础查询
+        return new Response('', {
+          status: 302,
+          headers: { 'Location': '/query' }
+        });
+        
       case '/query':
         // 基础查询接口
-        result = await handleQuery(false);
+        result = await handleQuery(false, forceRefresh);
+        title = '基础套餐查询';
+        responseType = 'html';
         break;
         
       case '/enhanced':
         // 增强查询接口
-        result = await handleQuery(true);
+        result = await handleQuery(true, forceRefresh);
+        title = '增强套餐查询';
+        responseType = 'html';
         break;
         
       case '/json':
         // JSON数据接口
         result = await handleJsonQuery();
+        responseType = 'json';
         break;
         
       case '/status':
       case '/health':
         // 状态检查接口
         result = await handleStatus();
+        title = '系统状态';
+        responseType = url.searchParams.has('format') && url.searchParams.get('format') === 'json' ? 'json' : 'html';
         break;
         
       case '/clear-cache':
-        // 清除缓存接口（仅支持POST）
-        if (method === 'POST') {
+        // 清除缓存接口
+        if (method === 'POST' || method === 'GET') {
           result = await handleClearCache();
+          title = '缓存管理';
+          responseType = 'html';
         } else {
           result = {
             success: false,
-            error: '此接口仅支持POST方法',
+            error: '此接口仅支持GET/POST方法',
             cached: false
           };
         }
@@ -253,9 +352,11 @@ async function handleRequest(request: Request): Promise<Response> {
       default:
         result = {
           success: false,
-          error: `未知的接口路径: ${pathname}`,
+          error: `未知的接口路径: ${pathname}\n\n可用接口:\n- /query (基础查询)\n- /enhanced (增强查询)\n- /json (JSON数据)\n- /status (系统状态)\n- /clear-cache (清除缓存)`,
           cached: false
         };
+        responseType = 'html';
+        title = '页面未找到';
     }
   } catch (error) {
     console.error('❌ 请求处理异常:', error);
@@ -267,12 +368,33 @@ async function handleRequest(request: Request): Promise<Response> {
   }
   
   // 构建响应
-  const status = result.success ? 200 : 400;
-  const responseData = result.success ? result.data : result.error;
+  const status = result.success ? 200 : (pathname === '/clear-cache' && result.success === false) ? 404 : 400;
   
-  // 根据路径决定Content-Type
-  const isJsonResponse = pathname.includes('json') || pathname.includes('status') || pathname.includes('health');
-  const contentType = isJsonResponse ? 'application/json; charset=utf-8' : 'text/plain; charset=utf-8';
+  let responseData: string;
+  let contentType: string;
+  
+  if (responseType === 'json') {
+    // JSON响应
+    if (pathname === '/json') {
+      const cacheManager = await getCacheManager();
+      const cachedData = await cacheManager.get(config.phonenum);
+      const jsonData = cachedData || { error: '没有可用数据' };
+      responseData = generateJsonPage(jsonData);
+      contentType = 'text/html; charset=utf-8';
+    } else {
+      responseData = result.success ? result.data : JSON.stringify({error: result.error}, null, 2);
+      contentType = 'application/json; charset=utf-8';
+    }
+  } else if (responseType === 'html') {
+    // HTML响应
+    const content = result.success ? result.data : result.error;
+    responseData = generateMainPage(content, title);
+    contentType = 'text/html; charset=utf-8';
+  } else {
+    // 纯文本响应
+    responseData = result.success ? result.data : result.error;
+    contentType = 'text/plain; charset=utf-8';
+  }
   
   const headers = {
     ...corsHeaders,

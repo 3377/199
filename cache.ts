@@ -4,10 +4,10 @@ import type { CachedData, SummaryData, FluxPackageData, ImportantData, ShareUsag
  * KV缓存管理器
  */
 export class CacheManager {
-  private kv: Deno.Kv;
+  private kv: any;
   private cachePrefix = 'telecom_data:';
   
-  constructor(kv: Deno.Kv) {
+  constructor(kv: any) {
     this.kv = kv;
   }
   
@@ -26,10 +26,10 @@ export class CacheManager {
       
       const cachedData = result.value as CachedData;
       
-      // 检查缓存是否过期（默认10分钟）
+      // 检查缓存是否过期（默认2分钟，更实时）
       const now = Date.now();
       const cacheAge = now - cachedData.timestamp;
-      const maxAge = parseInt(globalThis.Deno?.env.get('CACHE_TIME') || '600000'); // 10分钟
+      const maxAge = parseInt(globalThis.Deno?.env?.get?.('CACHE_TIME') || '120000'); // 2分钟
       
       if (cacheAge > maxAge) {
         console.log(`缓存已过期，年龄: ${Math.floor(cacheAge / 1000)}秒，最大年龄: ${Math.floor(maxAge / 1000)}秒`);
@@ -53,7 +53,7 @@ export class CacheManager {
         timestamp: Date.now()
       };
       
-      await this.kv.set([this.getCacheKey(phonenum)], cachedData);
+      await this.kv.set([this.getCacheKey(phonenum)] as any, cachedData);
       console.log('✅ 缓存数据已保存');
     } catch (error) {
       console.error('❌ 保存缓存失败:', error);
@@ -74,18 +74,18 @@ export class CacheManager {
   // 清空所有缓存
   async clear(): Promise<void> {
     try {
-      const iterator = this.kv.list({ prefix: [this.cachePrefix] });
+      const iterator = this.kv.list({ prefix: [this.cachePrefix] as any });
       const keys = [];
       for await (const { key } of iterator) {
         keys.push(key);
       }
       
-      if (keys.length > 0) {
-        const tx = this.kv.atomic();
-        for (const key of keys) {
-          tx.delete(key);
-        }
-        await tx.commit();
+              if (keys.length > 0) {
+          const tx = this.kv.atomic();
+          for (const key of keys) {
+            tx.delete(key as any);
+          }
+          await tx.commit();
         console.log(`🗑️ 已清空 ${keys.length} 个缓存条目`);
       } else {
         console.log('📭 没有需要清空的缓存');
@@ -201,7 +201,7 @@ let globalCacheManager: CacheManager | null = null;
 export async function getCacheManager(): Promise<CacheManager> {
   if (!globalCacheManager) {
     try {
-      const kv = await Deno.openKv();
+      const kv = await (globalThis as any).Deno.openKv();
       globalCacheManager = new CacheManager(kv);
       console.log('✅ KV缓存管理器初始化成功');
     } catch (error) {

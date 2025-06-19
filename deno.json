@@ -1,12 +1,12 @@
 {
   "compilerOptions": {
     "allowJs": true,
-    "lib": ["deno.window", "deno.ns"],
-    "strict": true
+    "lib": ["deno.window", "dom", "dom.iterable", "es6"],
+    "strict": false
   },
   "lint": {
-    "rules": {
-      "tags": ["recommended"]
+    "files": {
+      "include": ["src/"]
     }
   },
   "fmt": {
@@ -15,19 +15,33 @@
     "indentWidth": 2,
     "semiColons": true,
     "singleQuote": true,
-    "proseWrap": "preserve"
+    "proseWrap": "preserve",
+    "files": {
+      "include": ["src/"]
+    }
   },
   "lock": false,
   "nodeModulesDir": false,
   "tasks": {
-    "dev": "deno run --allow-net --allow-env --allow-read --allow-write --watch main.ts",
-    "start": "deno run --allow-net --allow-env --allow-read --allow-write main.ts",
+    "dev": "deno run --allow-all --watch main.ts",
+    "start": "deno run --allow-all main.ts",
     "cache": "deno cache main.ts",
     "check": "deno check main.ts",
     "lint": "deno lint",
     "fmt": "deno fmt"
   },
   "imports": {
-    "@/": "./"
+    "@/": "./",
+    "std/": "https://deno.land/std@0.208.0/"
+  },
+  "deploy": {
+    "project": "telecom-formatter",
+    "entrypoint": "./main.ts",
+    "envVars": [
+      "TELECOM_PHONENUM",
+      "TELECOM_PASSWORD", 
+      "WEB_PASSWORD",
+      "CACHE_TIME"
+    ]
   }
 } 
