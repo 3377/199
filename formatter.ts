@@ -286,33 +286,66 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
   
   // 格式化账户详细信息
   private formatImportantData(importantData?: ImportantData): string {
-    if (!importantData?.responseData?.data) {
+    if (!importantData) {
+      return '';
+    }
+    
+    // 尝试多种数据结构
+    let data: any = null;
+    if (importantData.responseData?.data) {
+      data = importantData.responseData.data;
+    } else if ((importantData as any).data) {
+      data = (importantData as any).data;
+    } else {
+      data = importantData;
+    }
+    
+    if (!data) {
       return '';
     }
     
     let result = '\n📋 账户详细信息\n';
-    const data = importantData.responseData.data;
     
     // 实时费用信息（优先显示）
-    if (data.realtimeFees) {
-      result += `\n💸 ${data.realtimeFees.title}\n`;
-      result += `  📊 ${data.realtimeFees.subTitle}：${data.realtimeFees.subTitleHh}\n`;
+    // 检查多种可能的数据结构
+    let realtimeFees = data.realtimeFees || data.realtimeFee;
+    if (realtimeFees) {
+      result += `\n💸 ${realtimeFees.title}\n`;
+      result += `  📊 ${realtimeFees.subTitle}：${realtimeFees.subTitleHh}\n`;
     }
     
-    // 月费构成信息
-    if (data.monthlyFees && data.monthlyFees.length > 0) {
+    // 也检查是否有直接匹配的实时费用数据
+    if (data.title && data.subTitle && data.subTitleHh && !data.barPercent) {
+      result += `\n💸 ${data.title}\n`;
+      result += `  📊 ${data.subTitle}：${data.subTitleHh}\n`;
+    }
+    
+    // 月费构成信息 - 检查多种结构
+    let monthlyFees = data.monthlyFees || data.monthlyFee || data.fees;
+    if (!monthlyFees && Array.isArray(data)) {
+      // 如果data本身是数组，检查月费构成数据
+      monthlyFees = data.filter(item => item.barRightSubTitle && item.barPercent);
+    }
+    
+    if (monthlyFees && monthlyFees.length > 0) {
       result += `\n💰 月费构成\n`;
-      for (const fee of data.monthlyFees) {
+      for (const fee of monthlyFees) {
         const progress = createSimpleProgressBar(parseInt(fee.barPercent), 100, 10);
-        result += `  📋 ${fee.title} (${fee.subTilte})\n`;
+        result += `  📋 ${fee.title} (${fee.subTilte || fee.subTitle})\n`;
         result += `      [${progress}] ${fee.barRightSubTitle}\n`;
       }
     }
     
-    // 云盘空间信息
-    if (data.cloudStorage && data.cloudStorage.length > 0) {
+    // 云盘空间信息 - 检查多种结构
+    let cloudStorage = data.cloudStorage || data.storage;
+    if (!cloudStorage && Array.isArray(data)) {
+      // 如果data本身是数组，检查云盘空间数据
+      cloudStorage = data.filter(item => item.leftTitleHh && item.rightTitleHh && item.rightTitleEnd);
+    }
+    
+    if (cloudStorage && cloudStorage.length > 0) {
       result += `\n☁️ 云盘空间\n`;
-      for (const storage of data.cloudStorage) {
+      for (const storage of cloudStorage) {
         const percent = parseInt(storage.barPercent);
         const progress = createSimpleProgressBar(percent, 100, 15);
         result += `  📂 ${storage.title}\n`;

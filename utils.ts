@@ -443,4 +443,24 @@ export function validatePassword(password: string): boolean {
   
   // 检查是否为6位数字
   return /^\d{6}$/.test(password);
+}
+
+// 计算缓存剩余时间
+export function calculateCacheRemaining(timestamp: number, cacheTimeSeconds: number): string {
+  const now = Date.now();
+  const elapsed = now - timestamp;
+  const remaining = (cacheTimeSeconds * 1000) - elapsed;
+  
+  if (remaining <= 0) {
+    return '已过期';
+  }
+  
+  const minutes = Math.floor(remaining / (60 * 1000));
+  const seconds = Math.floor((remaining % (60 * 1000)) / 1000);
+  
+  if (minutes > 0) {
+    return `${minutes}分${seconds}秒`;
+  } else {
+    return `${seconds}秒`;
+  }
 } 

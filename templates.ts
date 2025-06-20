@@ -523,7 +523,7 @@ export function generateMainPage(content: string, title: string = '电信套餐�
                 <a href="/api/query" class="quick-link">🔗 API接口</a>
             </div>
             <div class="status-info">
-                服务版本: 2.0.0 Enhanced | 缓存时间: ${Math.floor(cacheTime / 60)}分钟<br>
+                服务版本: 2.0.0 Enhanced | <span id="cache-timer">缓存剩余: 计算中...</span><br>
                 服务时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
             </div>
         </div>
@@ -567,6 +567,44 @@ export function generateMainPage(content: string, title: string = '电信套餐�
                 window.location.reload();
             }, interval);
         }
+
+        // 缓存倒计时功能
+        function initCacheTimer() {
+            const cacheTime = ${cacheTime}; // 缓存时间（秒）
+            const pageLoadTime = Date.now(); // 页面加载时间
+            
+            function updateTimer() {
+                const now = Date.now();
+                const elapsed = Math.floor((now - pageLoadTime) / 1000);
+                const remaining = Math.max(0, cacheTime - elapsed);
+                
+                const timerElement = document.getElementById('cache-timer');
+                if (timerElement) {
+                    if (remaining > 0) {
+                        const minutes = Math.floor(remaining / 60);
+                        const seconds = remaining % 60;
+                        if (minutes > 0) {
+                            timerElement.textContent = \`缓存剩余: \${minutes}分\${seconds}秒\`;
+                        } else {
+                            timerElement.textContent = \`缓存剩余: \${seconds}秒\`;
+                        }
+                        timerElement.style.color = '#4a5568';
+                    } else {
+                        timerElement.textContent = '缓存已过期';
+                        timerElement.style.color = '#e53e3e';
+                    }
+                }
+            }
+            
+            // 立即更新一次
+            updateTimer();
+            
+            // 每秒更新
+            setInterval(updateTimer, 1000);
+        }
+        
+        // 启动缓存倒计时
+        initCacheTimer();
         
         // 键盘快捷键
         document.addEventListener('keydown', function(e) {
