@@ -10,59 +10,49 @@ export class EnhancedTelecomClient {
     this.config = config;
   }
   
-  // 调用summary接口获取基本信息
+  // 调用summary接口获取套餐基础信息
   async getSummary(): Promise<SummaryData> {
-    const url = `${this.config.apiBase}/summary`;
-    const requestBody = {
-      phonenum: this.config.phonenum,
-      password: this.config.password
-    };
+    const url = `${this.config.apiBase}/summary?phonenum=${this.config.phonenum}&password=${this.config.password}`;
     
-    console.log(`正在调用summary接口: ${url}`);
+    console.log(`正在调用summary接口: ${url.replace(/phonenum=\d+/, 'phonenum=***').replace(/password=\d+/, 'password=***')}`);
     
     try {
       const response = await fetch(url, {
-        method: 'POST',
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
+          'Accept': 'application/json',
+        }
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP错误! status: ${response.status}, statusText: ${response.statusText}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const data = await response.json() as SummaryData;
+      const data = await response.json();
       console.log('✅ Summary接口调用成功');
       return data;
     } catch (error) {
       console.error('❌ 调用summary接口失败:', error);
-      throw new Error(`获取基本信息失败: ${error.message}`);
+      throw error;
     }
   }
   
-  // 调用userFluxPackage接口获取流量包详情
+  // 调用userFluxPackage接口获取流量包信息
   async getFluxPackage(): Promise<FluxPackageData> {
-    const url = `${this.config.apiBase}/userFluxPackage`;
-    const requestBody = {
-      phonenum: this.config.phonenum,
-      password: this.config.password
-    };
+    const url = `${this.config.apiBase}/userFluxPackage?phonenum=${this.config.phonenum}&password=${this.config.password}`;
     
-    console.log(`正在调用userFluxPackage接口: ${url}`);
+    console.log(`正在调用userFluxPackage接口: ${url.replace(/phonenum=\d+/, 'phonenum=***').replace(/password=\d+/, 'password=***')}`);
     
     try {
       const response = await fetch(url, {
-        method: 'POST',
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
+          'Accept': 'application/json',
+        }
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP错误! status: ${response.status}, statusText: ${response.statusText}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json() as FluxPackageData;
@@ -70,27 +60,22 @@ export class EnhancedTelecomClient {
       return data;
     } catch (error) {
       console.error('❌ 调用userFluxPackage接口失败:', error);
-      throw new Error(`获取流量包信息失败: ${error.message}`);
+      throw error;
     }
   }
   
-  // 调用qryImportantData接口获取重要数据详情
+  // 调用qryImportantData接口获取套餐详细信息
   async getImportantData(): Promise<ImportantData | null> {
-    const url = `${this.config.apiBase}/qryImportantData`;
-    const requestBody = {
-      phonenum: this.config.phonenum,
-      password: this.config.password
-    };
+    const url = `${this.config.apiBase}/qryImportantData?phonenum=${this.config.phonenum}&password=${this.config.password}`;
     
-    console.log(`正在调用qryImportantData接口: ${url}`);
+    console.log(`正在调用qryImportantData接口: ${url.replace(/phonenum=\d+/, 'phonenum=***').replace(/password=\d+/, 'password=***')}`);
     
     try {
       const response = await fetch(url, {
-        method: 'POST',
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
+          'Accept': 'application/json',
+        }
       });
       
       if (!response.ok) {
@@ -109,21 +94,16 @@ export class EnhancedTelecomClient {
   
   // 调用qryShareUsage接口获取共享套餐信息
   async getShareUsage(): Promise<ShareUsageData | null> {
-    const url = `${this.config.apiBase}/qryShareUsage`;
-    const requestBody = {
-      phonenum: this.config.phonenum,
-      password: this.config.password
-    };
+    const url = `${this.config.apiBase}/qryShareUsage?phonenum=${this.config.phonenum}&password=${this.config.password}`;
     
-    console.log(`正在调用qryShareUsage接口: ${url}`);
+    console.log(`正在调用qryShareUsage接口: ${url.replace(/phonenum=\d+/, 'phonenum=***').replace(/password=\d+/, 'password=***')}`);
     
     try {
       const response = await fetch(url, {
-        method: 'POST',
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
+          'Accept': 'application/json',
+        }
       });
       
       if (!response.ok) {
