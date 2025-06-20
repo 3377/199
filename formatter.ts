@@ -687,6 +687,177 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
     
     return `📱 ${maskPhoneNumber(summary.phonenum)} | 💰 ¥${balance} | 🌐 ${flowUsed}/${flowTotal}GB ${isOverFlow ? '🔴' : '🟢'} | 📊 ${stats.flowUsagePercent.toFixed(1)}%`;
   }
+  
+  // 格式化基础汇总（基础查询 + 关键详细信息）
+  public formatBasicSummary(summaryData?: SummaryData, fluxPackageData?: FluxPackageData, importantData?: ImportantData): string {
+    console.log('📋 生成基础汇总...');
+    
+    // 先生成原有的基础查询内容
+    let result = '';
+    if (summaryData && fluxPackageData) {
+      result = this.formatTelecomData(summaryData, fluxPackageData);
+    } else if (summaryData) {
+      // 生成简化的summary显示
+      result = this.formatBasicSummaryDisplay(summaryData);
+    }
+    
+    // 如果有详细信息，添加关键汇总内容
+    if (importantData) {
+      const detailSummary = this.formatImportantDataSummary(importantData);
+      if (detailSummary) {
+        result += '\n' + detailSummary;
+      }
+    }
+    
+    return result;
+  }
+  
+  // 格式化详细信息的关键汇总（用于基础查询）
+  private formatImportantDataSummary(importantData?: ImportantData): string {
+    if (!importantData) {
+      return '';
+    }
+    
+    // 根据实际API数据结构解析数据
+    let actualData: any = null;
+    
+    if (importantData.responseData?.data) {
+      actualData = importantData.responseData.data;
+    } else if ((importantData as any).data) {
+      actualData = (importantData as any).data;
+    } else {
+      actualData = importantData;
+    }
+    
+    if (!actualData) {
+      return '';
+    }
+    
+    let result = '\n📊 账户详情汇总';
+    let hasContent = false;
+    
+    // 1. 当月费用信息
+    if (actualData.balanceInfo?.phoneBillRegion) {
+      const phoneBill = actualData.balanceInfo.phoneBillRegion;
+      result += `\n💸 ${phoneBill.subTitle}：${phoneBill.subTitleHh}`;
+      hasContent = true;
+    }
+    
+    // 2. 账户余额
+    if (actualData.balanceInfo?.indexBalanceDataInfo?.balance) {
+      const balance = actualData.balanceInfo.indexBalanceDataInfo.balance;
+      result += `\n💰 账户余额：¥${balance}`;
+      hasContent = true;
+    }
+    
+    // 3. 积分信息
+    if (actualData.integralInfo?.integral) {
+      result += `\n⭐ 积分余额：${actualData.integralInfo.integral}分`;
+      hasContent = true;
+    }
+    
+    // 4. 云盘空间汇总
+    if (actualData.storageInfo?.flowList && Array.isArray(actualData.storageInfo.flowList)) {
+      const personalSpace = actualData.storageInfo.flowList.find(item => item.title?.includes('个人'));
+      const familySpace = actualData.storageInfo.flowList.find(item => item.title?.includes('家庭'));
+      
+      if (personalSpace || familySpace) {
+        result += `\n☁️ 云盘空间：`;
+        if (personalSpace) {
+          result += `个人${personalSpace.rightTitleHh}`;
+        }
+        if (familySpace) {
+          result += personalSpace ? `，家庭${familySpace.rightTitleHh}` : `家庭${familySpace.rightTitleHh}`;
+        }
+        hasContent = true;
+      }
+    }
+    
+    // 5. 月费构成TOP项目
+    if (actualData.balanceInfo?.phoneBillBars && Array.isArray(actualData.balanceInfo.phoneBillBars)) {
+      const topFee = actualData.balanceInfo.phoneBillBars[0]; // 取第一个最大项
+      if (topFee && topFee.title && topFee.barRightSubTitle) {
+        result += `\n📋 主要套餐：${topFee.title} ${topFee.barRightSubTitle}`;
+        hasContent = true;
+      }
+    }
+    
+    return hasContent ? result : '';
+  }
+  
+  // 格式化基础Summary显示（当没有流量包数据时使用）
+  private formatBasicSummaryDisplay(summaryData: SummaryData): string {
+    const balance = (summaryData.balance / 100).toFixed(2);
+    const flowUsedGB = (summaryData.flowUse / 1024 / 1024).toFixed(2);
+    const flowTotalGB = (summaryData.flowTotal / 1024 / 1024).toFixed(2);
+    const voiceUsed = summaryData.voiceUsage;
+    const voiceTotal = summaryData.voiceTotal;
+    
+    let result = `【 ✨ 电信套餐用量监控 ( 增强版 ) ✨ 】\n`;
+    result += `=================【基础信息】=================\n`;
+    result += `📱 手机: ${maskPhoneNumber(summaryData.phonenum)}\n`;
+    result += `💰 余额: ¥${balance}\n`;
+    result += `📞 通话: ${voiceUsed} / ${voiceTotal} min `;
+    
+    if (voiceTotal > 0) {
+      const voicePercent = ((voiceUsed / voiceTotal) * 100).toFixed(1);
+      const voiceProgress = createSimpleProgressBar(voiceUsed, voiceTotal, 15);
+      result += `[${voiceProgress}] ${voicePercent}%\n`;
+    } else {
+      result += `📊 无限制\n`;
+    }
+    
+    result += `🌐 总流量\n`;
+    result += `  - 通用: ${flowUsedGB} / ${flowTotalGB} GB `;
+    
+    if (summaryData.flowTotal > 0) {
+      const flowPercent = ((summaryData.flowUse / summaryData.flowTotal) * 100).toFixed(1);
+      const flowProgress = createSimpleProgressBar(summaryData.flowUse, summaryData.flowTotal, 15);
+      result += `[${flowProgress}] ${flowPercent}%`;
+    } else {
+      result += `📊 无限制`;
+    }
+    
+    return result;
+  }
+  
+  // 格式化紧凑版机器人数据（适合钉钉/TG通知）
+  public formatCompactForBot(summaryData: SummaryData, fluxPackageData: FluxPackageData): string {
+    const balance = (summaryData.balance / 100).toFixed(2);
+    const flowUsedGB = (summaryData.flowUse / 1024 / 1024).toFixed(2);
+    const flowTotalGB = (summaryData.flowTotal / 1024 / 1024).toFixed(2);
+    const voiceUsed = summaryData.voiceUsage;
+    const voiceTotal = summaryData.voiceTotal;
+    
+    const maskedPhone = maskPhoneNumber(summaryData.phonenum);
+    const flowPercent = summaryData.flowTotal > 0 ? ((summaryData.flowUse / summaryData.flowTotal) * 100).toFixed(1) : '0';
+    const voicePercent = voiceTotal > 0 ? ((voiceUsed / voiceTotal) * 100).toFixed(1) : '0';
+    
+    // 紧凑格式：一行显示核心信息
+    let result = `📱 ${maskedPhone}\n`;
+    result += `💰 余额: ¥${balance}\n`;
+    result += `📊 流量: ${flowUsedGB}/${flowTotalGB}GB (${flowPercent}%)\n`;
+    result += `📞 通话: ${voiceUsed}/${voiceTotal}min (${voicePercent}%)\n`;
+    
+    // 添加流量包信息（如果有）
+    if (fluxPackageData?.responseData?.data?.productOFFRatable?.ratableResourcePackages?.length > 0) {
+      const packages = fluxPackageData.responseData.data.productOFFRatable.ratableResourcePackages;
+      result += `📦 流量包: ${packages.length}个`;
+      
+      // 显示第一个流量包的简要信息
+      const firstPackage = packages[0];
+      if (firstPackage.productInfos?.length > 0) {
+        const firstProduct = firstPackage.productInfos[0];
+        if (firstProduct.leftHighlight && firstProduct.rightCommon) {
+          result += ` (${firstProduct.leftHighlight}/${firstProduct.rightCommon})`;
+        }
+      }
+    }
+    
+    result += `\n⏰ ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`;
+    
+    return result;
+  }
 }
 
 // 创建全局格式化器实例

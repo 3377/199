@@ -54,6 +54,9 @@ try {
   console.log('  • POST /api/qryShareUsage     - 共享流量');
   console.log('  • POST /api/summary           - 综合信息');
   
+  console.log('🤖 机器人专用API:');
+  console.log('  • POST /api/bot               - 机器人聚合数据接口');
+  
   console.log('⚙️  会话管理:');
   console.log('  • GET  /api/session/stats     - 会话统计');
   console.log('  • GET  /api/session/clean     - 清理过期');
@@ -131,14 +134,16 @@ async function handleQuery(enhanced: boolean = false, forceRefresh: boolean = fa
         timestamp: queryTimestamp
       };
     } else {
-      // 基础查询：仅获取核心数据
+      // 基础查询：获取核心数据 + 详细信息汇总
       const basicData = await telecomClient.getBasicData();
+      const importantData = await telecomClient.getImportantData();
       
-      formattedText = formatter.formatTelecomData(basicData.summary, basicData.fluxPackage);
+      formattedText = formatter.formatBasicSummary(basicData.summary, basicData.fluxPackage, importantData || undefined);
       
       cacheData = {
         summary: basicData.summary,
         fluxPackage: basicData.fluxPackage,
+        importantData: importantData,
         formattedText,
         queryType: 'basic',
         timestamp: queryTimestamp
@@ -559,6 +564,82 @@ async function handleConfigManagement(request: Request): Promise<Response> {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });
+  }
+}
+
+// 机器人专用查询处理函数
+async function handleBotQuery(request: Request): Promise<ApiResponse> {
+  try {
+    const body = await request.json();
+    const { phonenum, password, type = 'basic' } = body;
+    
+    if (!phonenum || !password) {
+      return {
+        success: false,
+        error: '请提供手机号和密码',
+        cached: false
+      };
+    }
+    
+    // 验证手机号和密码是否在配置中
+    const userConfig = multiConfig.users.find(user => user.phonenum === phonenum);
+    if (!userConfig || userConfig.password !== password) {
+      return {
+        success: false,
+        error: '手机号或密码错误',
+        cached: false,
+        phonenum: maskPhoneNumber(phonenum)
+      };
+    }
+    
+    const telecomClient = telecomClients.get(phonenum);
+    if (!telecomClient) {
+      return {
+        success: false,
+        error: `未找到手机号 ${maskPhoneNumber(phonenum)} 的配置`,
+        cached: false,
+        phonenum: phonenum
+      };
+    }
+    
+    // 根据类型生成不同的机器人数据
+    let formattedText: string;
+    
+    if (type === 'enhanced') {
+      // 增强版机器人数据：完整详细信息
+      const fullData = await telecomClient.getFullData();
+      formattedText = formatter.formatEnhancedTelecomData(
+        fullData.summary, 
+        fullData.fluxPackage,
+        fullData.importantData,
+        fullData.shareUsage
+      );
+    } else if (type === 'compact') {
+      // 紧凑版机器人数据：仅核心信息，适合钉钉/TG通知
+      const basicData = await telecomClient.getBasicData();
+      formattedText = formatter.formatCompactForBot(basicData.summary, basicData.fluxPackage);
+    } else {
+      // 基础版机器人数据：包含关键详细信息汇总
+      const basicData = await telecomClient.getBasicData();
+      const importantData = await telecomClient.getImportantData();
+      formattedText = formatter.formatBasicSummary(basicData.summary, basicData.fluxPackage, importantData || undefined);
+    }
+    
+    return {
+      success: true,
+      data: formattedText,
+      cached: false,
+      phonenum: maskPhoneNumber(phonenum),
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    console.error('❌ 机器人查询处理失败:', error);
+    return {
+      success: false,
+      error: error.message,
+      cached: false
+    };
   }
 }
 
@@ -1029,6 +1110,14 @@ async function handleRequest(request: Request): Promise<Response> {
     // API 登录路由
     if (url.pathname === '/api/login') {
       return await handleApiLogin(request);
+    }
+    
+    // 机器人专用API路由
+    if (url.pathname === '/api/bot') {
+      const result = await handleBotQuery(request);
+      return new Response(JSON.stringify(result), { 
+        headers: { 'Content-Type': 'application/json' } 
+      });
     }
     
     // API 查询路由
