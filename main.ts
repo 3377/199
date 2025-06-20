@@ -1013,6 +1013,36 @@ async function handleRequest(request: Request): Promise<Response> {
     return await handleLogin(request);
   }
   
+  // 机器人专用API路由（不需要认证）
+  if (url.pathname === '/api/bot') {
+    const result = await handleBotQuery(request);
+    return new Response(JSON.stringify(result), { 
+      headers: { 'Content-Type': 'application/json' } 
+    });
+  }
+  
+  // 原有API路由（不需要认证，保持向后兼容）
+  if (url.pathname === '/api/query' && (method === 'GET' || method === 'POST')) {
+    let result: ApiResponse;
+    
+    if (method === 'GET') {
+      const phoneParam = url.searchParams.get('phonenum');
+      const enhanced = url.searchParams.get('enhanced') === 'true';
+      result = await handleQuery(enhanced, false, phoneParam || undefined);
+    } else {
+      result = await handlePostQuery(request);
+    }
+    
+    return new Response(JSON.stringify(result), { 
+      headers: { 'Content-Type': 'application/json' } 
+    });
+  }
+  
+  // API 登录路由（不需要认证）
+  if (url.pathname === '/api/login') {
+    return await handleApiLogin(request);
+  }
+  
   // 认证检查
   const authResult = requireAuth(request);
   if (!authResult.authenticated) {
@@ -1088,37 +1118,7 @@ async function handleRequest(request: Request): Promise<Response> {
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
     
-    // 原有API路由（保持向后兼容）
-    if (url.pathname === '/api/query' && (method === 'GET' || method === 'POST')) {
-      let result: ApiResponse;
-      
-      if (method === 'GET') {
-        const phoneParam = url.searchParams.get('phonenum');
-        const enhanced = url.searchParams.get('enhanced') === 'true';
-        result = await handleQuery(enhanced, false, phoneParam || undefined);
-      } else {
-        result = await handlePostQuery(request);
-      }
-      
-      return new Response(JSON.stringify(result), { 
-        headers: { 'Content-Type': 'application/json' } 
-      });
-    }
-    
-    // ============ 新增 API 路由 ============
-    
-    // API 登录路由
-    if (url.pathname === '/api/login') {
-      return await handleApiLogin(request);
-    }
-    
-    // 机器人专用API路由
-    if (url.pathname === '/api/bot') {
-      const result = await handleBotQuery(request);
-      return new Response(JSON.stringify(result), { 
-        headers: { 'Content-Type': 'application/json' } 
-      });
-    }
+    // ============ 其他 API 路由 ============
     
     // API 查询路由
     if (url.pathname === '/api/qryImportantData') {
