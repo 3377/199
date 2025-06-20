@@ -171,13 +171,19 @@ export function formatPackageDate(dateStr?: string): string {
   if (!dateStr) return '未知';
   
   try {
-    const date = new Date(dateStr);
+    // 处理特殊格式，如 "失效时间：2025-07-01 00:00:00"
+    let cleanDateStr = dateStr;
+    if (dateStr.includes('：')) {
+      cleanDateStr = dateStr.split('：')[1] || dateStr;
+    }
+    
+    const date = new Date(cleanDateStr);
     if (isNaN(date.getTime())) {
       // 尝试解析不同格式的日期字符串
-      const cleanDateStr = dateStr.replace(/[^\d-]/g, '').slice(0, 10);
-      const parsedDate = new Date(cleanDateStr);
+      const normalizedDateStr = cleanDateStr.replace(/[^\d-\s:]/g, '').slice(0, 19);
+      const parsedDate = new Date(normalizedDateStr);
       if (isNaN(parsedDate.getTime())) {
-        return dateStr; // 如果无法解析，返回原字符串
+        return cleanDateStr; // 如果无法解析，返回清理后的字符串
       }
       return parsedDate.toLocaleDateString('zh-CN');
     }
@@ -192,7 +198,17 @@ export function calculateExpireDays(expireDate?: string): number | null {
   if (!expireDate) return null;
   
   try {
-    const expire = new Date(expireDate);
+    // 处理特殊格式，如 "失效时间：2025-07-01 00:00:00"
+    let cleanDateStr = expireDate;
+    if (expireDate.includes('：')) {
+      cleanDateStr = expireDate.split('：')[1] || expireDate;
+    }
+    
+    const expire = new Date(cleanDateStr);
+    if (isNaN(expire.getTime())) {
+      return null;
+    }
+    
     const now = new Date();
     const diffTime = expire.getTime() - now.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));

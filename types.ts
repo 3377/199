@@ -51,6 +51,7 @@ export interface FluxPackageItem {
   expireDate?: string;        // 过期日期
   orderTime?: string;         // 订购时间
   packageStatus?: string;     // 套餐状态
+  outOfServiceTime?: string;  // 失效时间
 }
 
 // 重要数据详情
@@ -69,8 +70,40 @@ export interface ImportantData {
         realBalance?: number;     // 实际余额
         creditBalance?: number;   // 信用额度
       };
+      cloudStorage?: CloudStorageInfo[];  // 云盘空间信息
+      monthlyFees?: MonthlyFeeInfo[];      // 月费构成信息
+      realtimeFees?: RealtimeFeeInfo;      // 实时费用信息
     };
   };
+}
+
+// 云盘空间信息
+export interface CloudStorageInfo {
+  title: string;              // 云盘类型名称
+  subTitle?: string;          // 副标题
+  barPercent: string;         // 使用百分比
+  barRightCount?: string;     // 右侧计数
+  leftTitle: string;          // 左侧标题（已用）
+  leftTitleHh: string;        // 左侧高亮值（已用量）
+  rightTitle: string;         // 右侧标题（剩余）
+  rightTitleHh: string;       // 右侧高亮值（剩余量）
+  rightTitleEnd: string;      // 总容量
+}
+
+// 月费构成信息
+export interface MonthlyFeeInfo {
+  title: string;              // 费用项目名称
+  subTilte: string;           // 费用占比百分比
+  barPercent: string;         // 进度条百分比
+  barRightSubTitle: string;   // 费用金额
+}
+
+// 实时费用信息
+export interface RealtimeFeeInfo {
+  title: string;              // 标题
+  subTitle: string;           // 副标题
+  subTitleHh: string;         // 费用金额
+  iconUrl?: string;           // 图标URL
 }
 
 // 共享套餐信息

@@ -948,21 +948,21 @@ async function handleRequest(request: Request): Promise<Response> {
     if (url.pathname === '/' && method === 'GET') {
       const result = await handleQuery(false, false, phoneParam || undefined);
       const content = result.success ? result.data as string : `❌ 查询失败: ${result.error}`;
-      const html = generateMainPage(content, '电信套餐查询', multiConfig.users, phoneParam || multiConfig.defaultUser);
+      const html = generateMainPage(content, '电信套餐查询', multiConfig.users, phoneParam || multiConfig.defaultUser, multiConfig.cacheTime);
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
     
     if (url.pathname === '/query' && method === 'GET') {
       const result = await handleQuery(false, forceRefresh, phoneParam || undefined);
       const content = result.success ? result.data as string : `❌ 查询失败: ${result.error}`;
-      const html = generateMainPage(content, '基础查询结果', multiConfig.users, phoneParam || multiConfig.defaultUser);
+      const html = generateMainPage(content, '基础查询结果', multiConfig.users, phoneParam || multiConfig.defaultUser, multiConfig.cacheTime);
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
     
     if (url.pathname === '/enhanced' && method === 'GET') {
       const result = await handleQuery(true, forceRefresh, phoneParam || undefined);
       const content = result.success ? result.data as string : `❌ 查询失败: ${result.error}`;
-      const html = generateMainPage(content, '增强查询结果', multiConfig.users, phoneParam || multiConfig.defaultUser);
+      const html = generateMainPage(content, '增强查询结果', multiConfig.users, phoneParam || multiConfig.defaultUser, multiConfig.cacheTime);
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
     
@@ -995,7 +995,7 @@ async function handleRequest(request: Request): Promise<Response> {
     if (url.pathname === '/clear-cache' && method === 'GET') {
       const result = await handleClearCache();
       const content = result.success ? result.data as string : `❌ 操作失败: ${result.error}`;
-      const html = generateMainPage(content, '缓存清理结果', multiConfig.users, phoneParam || multiConfig.defaultUser);
+      const html = generateMainPage(content, '缓存清理结果', multiConfig.users, phoneParam || multiConfig.defaultUser, multiConfig.cacheTime);
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
     

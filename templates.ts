@@ -1,7 +1,7 @@
 import type { UserConfig } from './types.ts';
 
 // HTML页面模板  
-export function generateMainPage(content: string, title: string = '电信套餐查询', users: UserConfig[] = [], currentUser: string = ''): string {
+export function generateMainPage(content: string, title: string = '电信套餐查询', users: UserConfig[] = [], currentUser: string = '', cacheTime: number = 120): string {
   return `
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -523,7 +523,7 @@ export function generateMainPage(content: string, title: string = '电信套餐�
                 <a href="/api/query" class="quick-link">🔗 API接口</a>
             </div>
             <div class="status-info">
-                服务版本: 2.0.0 Enhanced | 缓存时间: 2分钟<br>
+                服务版本: 2.0.0 Enhanced | 缓存时间: ${Math.floor(cacheTime / 60)}分钟<br>
                 服务时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
             </div>
         </div>

@@ -155,8 +155,9 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
         result += `\n${icon} ${group}\n`;
       }
       
-      // 获取流量包状态信息
-      const packageStatus = getPackageStatus(product.expireDate);
+      // 获取流量包状态信息，优先使用outOfServiceTime，其次使用expireDate
+      const expireDate = product.outOfServiceTime || product.expireDate;
+      const packageStatus = getPackageStatus(expireDate);
       const statusInfo = packageStatus.days !== undefined ? ` ${formatTimeDiff(packageStatus.days)}` : '';
       
       // 统计各类流量包
@@ -172,11 +173,15 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
         result += `      ${packageStatus.icon} ${packageStatus.status}${statusInfo}\n`;
         
         // 显示时间信息（如果有）
-        if (product.orderTime || product.effectDate || product.expireDate) {
+        if (product.orderTime || product.effectDate || product.expireDate || product.outOfServiceTime) {
           result += `      📅 `;
           if (product.orderTime) result += `订购：${formatPackageDate(product.orderTime)} `;
           if (product.effectDate) result += `生效：${formatPackageDate(product.effectDate)} `;
-          if (product.expireDate) result += `到期：${formatPackageDate(product.expireDate)}`;
+          if (product.outOfServiceTime) {
+            result += `失效：${formatPackageDate(product.outOfServiceTime)}`;
+          } else if (product.expireDate) {
+            result += `到期：${formatPackageDate(product.expireDate)}`;
+          }
           result += `\n`;
         }
         
@@ -198,11 +203,15 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
           result += `      ${packageStatus.icon} ${packageStatus.status}${statusInfo}\n`;
           
           // 显示时间信息（如果有）
-          if (product.orderTime || product.effectDate || product.expireDate) {
+          if (product.orderTime || product.effectDate || product.expireDate || product.outOfServiceTime) {
             result += `      📅 `;
             if (product.orderTime) result += `订购：${formatPackageDate(product.orderTime)} `;
             if (product.effectDate) result += `生效：${formatPackageDate(product.effectDate)} `;
-            if (product.expireDate) result += `到期：${formatPackageDate(product.expireDate)}`;
+            if (product.outOfServiceTime) {
+              result += `失效：${formatPackageDate(product.outOfServiceTime)}`;
+            } else if (product.expireDate) {
+              result += `到期：${formatPackageDate(product.expireDate)}`;
+            }
             result += `\n`;
           }
           
@@ -212,11 +221,15 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
           result += `      ${packageStatus.icon} ${packageStatus.status}${statusInfo}\n`;
           
           // 显示时间信息（如果有）
-          if (product.orderTime || product.effectDate || product.expireDate) {
+          if (product.orderTime || product.effectDate || product.expireDate || product.outOfServiceTime) {
             result += `      📅 `;
             if (product.orderTime) result += `订购：${formatPackageDate(product.orderTime)} `;
             if (product.effectDate) result += `生效：${formatPackageDate(product.effectDate)} `;
-            if (product.expireDate) result += `到期：${formatPackageDate(product.expireDate)}`;
+            if (product.outOfServiceTime) {
+              result += `失效：${formatPackageDate(product.outOfServiceTime)}`;
+            } else if (product.expireDate) {
+              result += `到期：${formatPackageDate(product.expireDate)}`;
+            }
             result += `\n`;
           }
         }
@@ -280,6 +293,34 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
     let result = '\n📋 账户详细信息\n';
     const data = importantData.responseData.data;
     
+    // 实时费用信息（优先显示）
+    if (data.realtimeFees) {
+      result += `\n💸 ${data.realtimeFees.title}\n`;
+      result += `  📊 ${data.realtimeFees.subTitle}：${data.realtimeFees.subTitleHh}\n`;
+    }
+    
+    // 月费构成信息
+    if (data.monthlyFees && data.monthlyFees.length > 0) {
+      result += `\n💰 月费构成\n`;
+      for (const fee of data.monthlyFees) {
+        const progress = createSimpleProgressBar(parseInt(fee.barPercent), 100, 10);
+        result += `  📋 ${fee.title} (${fee.subTilte})\n`;
+        result += `      [${progress}] ${fee.barRightSubTitle}\n`;
+      }
+    }
+    
+    // 云盘空间信息
+    if (data.cloudStorage && data.cloudStorage.length > 0) {
+      result += `\n☁️ 云盘空间\n`;
+      for (const storage of data.cloudStorage) {
+        const percent = parseInt(storage.barPercent);
+        const progress = createSimpleProgressBar(percent, 100, 15);
+        result += `  📂 ${storage.title}\n`;
+        result += `      ${storage.leftTitle}：${storage.leftTitleHh} | ${storage.rightTitle}：${storage.rightTitleHh}\n`;
+        result += `      [${progress}] ${percent}% 已使用 ${storage.rightTitleEnd}\n`;
+      }
+    }
+    
     // 会员信息
     if (data.memberInfo) {
       result += `\n👤 会员信息\n`;
@@ -304,9 +345,9 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
     
     // 余额信息
     if (data.balanceInfo) {
-      result += `\n💰 余额信息\n`;
+      result += `\n💵 详细余额\n`;
       if (data.balanceInfo.realBalance !== undefined) {
-        result += `  💵 实际余额：¥${(data.balanceInfo.realBalance / 100).toFixed(2)}\n`;
+        result += `  💰 实际余额：¥${(data.balanceInfo.realBalance / 100).toFixed(2)}\n`;
       }
       if (data.balanceInfo.creditBalance !== undefined) {
         result += `  🏧 信用额度：¥${(data.balanceInfo.creditBalance / 100).toFixed(2)}\n`;
