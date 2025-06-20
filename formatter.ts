@@ -21,6 +21,7 @@ import {
   maskPhoneNumber,
   formatPackageDate,
   getPackageStatus,
+  calculateExpireDays,
   formatTimeDiff
 } from './utils.ts';
 
@@ -99,151 +100,186 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
 📈 使用趋势：${stats.flowTrend === 'normal' ? '正常' : stats.flowTrend === 'high' ? '偏高' : '过高'}`;
   }
   
-  // 格式化流量包详细信息（增强版）
-  private formatEnhancedFluxPackageDetails(fluxPackageData: FluxPackageData): string {
-    if (!fluxPackageData.responseData?.data?.productOFFRatable?.ratableResourcePackages) {
-      return '❌ 流量包信息获取失败';
+  // 格式化增强版流量包详情 - 根据实际API数据结构重写
+  private formatEnhancedFluxPackageDetails(fluxData?: FluxPackageData): string {
+    if (!fluxData) {
+      return '';
     }
     
-    const packages = fluxPackageData.responseData.data.productOFFRatable.ratableResourcePackages;
-    let result = '';
-    let totalPackages = 0;
-    let activePackages = 0;
-    let expiredPackages = 0;
-    let soonExpirePackages = 0;
+    console.log('🔍 调试：流量包原始数据：', JSON.stringify(fluxData, null, 2));
     
-    // 收集所有流量包信息用于排序
-    const allPackages: Array<{
-      group: string;
-      icon: string;
-      product: any;
-      expireDays?: number;
-    }> = [];
+    // 根据实际API数据结构解析数据
+    let actualData: any = null;
     
-    // 收集所有流量包
-    for (const packageGroup of packages) {
-      const packageIcon = getFlowPackageIcon(packageGroup.title);
-      
-      for (const product of packageGroup.productInfos) {
-        const packageStatus = getPackageStatus(product.expireDate);
-        allPackages.push({
-          group: packageGroup.title,
-          icon: packageIcon,
-          product,
-          expireDays: packageStatus.days
-        });
+    // 优先尝试从responseData.data获取
+    if (fluxData.responseData?.data) {
+      actualData = fluxData.responseData.data;
+    }
+    // 其次尝试从data字段获取
+    else if ((fluxData as any).data) {
+      actualData = (fluxData as any).data;
+    }
+    // 最后尝试根级别
+    else {
+      actualData = fluxData;
+    }
+    
+    if (!actualData) {
+      console.log('⚠️ 无法找到有效的流量包数据结构');
+      return '';
+    }
+    
+    console.log('🔍 解析出的流量包actualData：', JSON.stringify(actualData, null, 2));
+    
+    let result = '\n🚀 流量包详细信息\n';
+    let packageCount = 0;
+    
+    // 解析主套餐信息（mainProductOFFInfo）
+    if (actualData.mainProductOFFInfo) {
+      const mainProduct = actualData.mainProductOFFInfo;
+      result += `\n📋 主套餐信息\n`;
+      result += `  📱 套餐名称：${mainProduct.productOFFName}\n`;
+      if (mainProduct.shareTipDesc) {
+        result += `  👥 ${mainProduct.shareTitle}：${mainProduct.shareTipDesc}\n`;
       }
     }
     
-    // 按到期时间排序（即将到期的在前）
-    allPackages.sort((a, b) => {
-      if (a.expireDays === null && b.expireDays === null) return 0;
-      if (a.expireDays === null) return 1;
-      if (b.expireDays === null) return -1;
-      return (a.expireDays || 0) - (b.expireDays || 0);
-    });
-    
-    let currentGroup = '';
-    
-    for (const item of allPackages) {
-      const { group, icon, product } = item;
-      totalPackages++;
-      
-      // 显示分组标题
-      if (currentGroup !== group) {
-        currentGroup = group;
-        result += `\n${icon} ${group}\n`;
-      }
-      
-      // 获取流量包状态信息，优先使用outOfServiceTime，其次使用expireDate
-      const expireDate = product.outOfServiceTime || product.expireDate;
-      const packageStatus = getPackageStatus(expireDate);
-      const statusInfo = packageStatus.days !== undefined ? ` ${formatTimeDiff(packageStatus.days)}` : '';
-      
-      // 统计各类流量包
-      if (packageStatus.status === '已过期') {
-        expiredPackages++;
-      } else if (packageStatus.status === '即将到期') {
-        soonExpirePackages++;
-      }
-      
-      if (product.infiniteTitle) {
-        // 无限流量包
-        result += `  🔹 [${product.title}] ${product.infiniteTitle}${product.infiniteValue}${product.infiniteUnit}/无限\n`;
-        result += `      ${packageStatus.icon} ${packageStatus.status}${statusInfo}\n`;
-        
-        // 显示时间信息（如果有）
-        if (product.orderTime || product.effectDate || product.expireDate || product.outOfServiceTime) {
-          result += `      📅 `;
-          if (product.orderTime) result += `订购：${formatPackageDate(product.orderTime)} `;
-          if (product.effectDate) result += `生效：${formatPackageDate(product.effectDate)} `;
-          if (product.outOfServiceTime) {
-            result += `失效：${formatPackageDate(product.outOfServiceTime)}`;
-          } else if (product.expireDate) {
-            result += `到期：${formatPackageDate(product.expireDate)}`;
-          }
-          result += `\n`;
-        }
-        
-        activePackages++;
-      } else if (product.leftTitle && product.leftHighlight && product.rightCommon) {
-        // 普通流量包 - 解析使用量和总量
-        const usageMatch = product.leftHighlight.match(/(\d+(?:\.\d+)?)(KB|MB|GB)/);
-        const totalMatch = product.rightCommon.match(/(\d+(?:\.\d+)?)(KB|MB|GB)/);
-        
-        if (usageMatch && totalMatch) {
-          // 转换为KB进行计算
-          const usageKB = this.convertToKB(parseFloat(usageMatch[1]), usageMatch[2]);
-          const totalKB = this.convertToKB(parseFloat(totalMatch[1]), totalMatch[2]);
-          const percent = calculatePercentage(usageKB, totalKB);
-          const progress = createSimpleProgressBar(usageKB, totalKB, 8);
+    // 解析流量包详情（从ratableResourcePackages获取）
+    if (actualData.productOFFRatable?.ratableResourcePackages) {
+      for (const category of actualData.productOFFRatable.ratableResourcePackages) {
+        if (category.title && category.productInfos && Array.isArray(category.productInfos)) {
+          result += `\n📊 ${category.title}\n`;
           
-          result += `  🔹 [${product.title}] ${product.leftTitle}${product.leftHighlight}/${product.rightCommon}\n`;
-          result += `      [${progress}] ${percent.toFixed(1)}% 已使用\n`;
-          result += `      ${packageStatus.icon} ${packageStatus.status}${statusInfo}\n`;
-          
-          // 显示时间信息（如果有）
-          if (product.orderTime || product.effectDate || product.expireDate || product.outOfServiceTime) {
-            result += `      📅 `;
-            if (product.orderTime) result += `订购：${formatPackageDate(product.orderTime)} `;
-            if (product.effectDate) result += `生效：${formatPackageDate(product.effectDate)} `;
-            if (product.outOfServiceTime) {
-              result += `失效：${formatPackageDate(product.outOfServiceTime)}`;
-            } else if (product.expireDate) {
-              result += `到期：${formatPackageDate(product.expireDate)}`;
-            }
-            result += `\n`;
+          // 总体使用情况
+          if (category.leftStructure && category.rightStructure) {
+            const usedPercent = category.leftStructure.title?.match(/(\d+)%/)?.[1] || '0';
+            const remainPercent = category.rightStructure.title?.match(/(\d+)%/)?.[1] || '0';
+            const progress = createSimpleProgressBar(parseInt(usedPercent), 100, 20);
+            
+            result += `  📈 总体使用：${category.leftStructure.num}${category.leftStructure.unit} / ${category.rightStructure.num}${category.rightStructure.unit}\n`;
+            result += `  📊 [${progress}] ${usedPercent}% 已使用\n`;
           }
           
-          if (usageKB > 0 && packageStatus.status !== '已过期') activePackages++;
-        } else {
-          result += `  🔹 [${product.title}] ${product.leftTitle}${product.leftHighlight}/${product.rightCommon}\n`;
-          result += `      ${packageStatus.icon} ${packageStatus.status}${statusInfo}\n`;
+          // 各个流量包详情
+          result += `\n  📦 流量包明细：\n`;
           
-          // 显示时间信息（如果有）
-          if (product.orderTime || product.effectDate || product.expireDate || product.outOfServiceTime) {
-            result += `      📅 `;
-            if (product.orderTime) result += `订购：${formatPackageDate(product.orderTime)} `;
-            if (product.effectDate) result += `生效：${formatPackageDate(product.effectDate)} `;
-            if (product.outOfServiceTime) {
-              result += `失效：${formatPackageDate(product.outOfServiceTime)}`;
-            } else if (product.expireDate) {
-              result += `到期：${formatPackageDate(product.expireDate)}`;
+          // 按orderLevel排序
+          const sortedPackages = category.productInfos.sort((a: any, b: any) => 
+            (a.orderLevel || 999) - (b.orderLevel || 999)
+          );
+          
+          for (const pkg of sortedPackages) {
+            packageCount++;
+            const usedPercent = parseInt(pkg.progressBar) || 0;
+                         const progress = createSimpleProgressBar(parseInt(pkg.progressBar) || 0, 100, 12);
+             
+             result += `\n    ${packageCount}. ${pkg.title}\n`;
+             result += `      📊 [${progress}] ${usedPercent}% 已使用\n`;
+             result += `      📱 ${pkg.leftTitle}：${pkg.leftHighlight} | ${pkg.rightTitle}：${pkg.rightHighlight}${pkg.rightCommon || ''}\n`;
+             
+             // 解析失效时间
+             const expireTime = pkg.outOfServiceTime || pkg.expireDate || pkg.effectDate;
+             if (expireTime) {
+               const expireText = formatPackageDate(expireTime);
+               const expireDays = calculateExpireDays(expireTime);
+               const statusInfo = getPackageStatus(expireTime);
+               
+               result += `      ⏰ 失效时间：${expireText}\n`;
+               result += `      ${statusInfo.icon} 状态：${statusInfo.status}\n`;
+               
+               if (expireDays !== null && expireDays > 0 && expireDays <= 30) {
+                 result += `      ⚠️ 还有 ${expireDays} 天到期，请及时续费！\n`;
+               }
+             }
+            
+            // 无限制流量包特殊处理
+            if (pkg.isInfiniteAmount === "1" && pkg.infiniteTitle) {
+              result += `      ♾️ ${pkg.infiniteTitle}：${pkg.infiniteValue}${pkg.infiniteUnit}\n`;
             }
-            result += `\n`;
+            
+            // 包状态
+            if (pkg.isInvalid === "1") {
+              result += `      ❌ 状态：已失效\n`;
+            } else {
+              result += `      ✅ 状态：有效\n`;
+            }
           }
         }
       }
     }
     
-    // 添加增强的流量包统计
-    result += `\n📦 流量包统计：共${totalPackages}个`;
-    result += ` | ✅ 活跃${activePackages}个`;
-    if (soonExpirePackages > 0) result += ` | ⚠️ 即将到期${soonExpirePackages}个`;
-    if (expiredPackages > 0) result += ` | ❌ 已过期${expiredPackages}个`;
-    result += `\n`;
+    // 如果没有找到流量包，尝试从其他可能的位置解析
+    if (packageCount === 0) {
+      console.log('🔍 尝试从其他位置解析流量包数据...');
+      
+      // 尝试直接从fluxPackages数组解析（如果存在）
+      if (actualData.fluxPackages && Array.isArray(actualData.fluxPackages)) {
+        result += `\n📦 流量包列表\n`;
+        
+        for (let i = 0; i < actualData.fluxPackages.length; i++) {
+          const pkg = actualData.fluxPackages[i];
+          packageCount++;
+          
+          result += `\n  ${packageCount}. ${pkg.packageName || pkg.title}\n`;
+          
+          if (pkg.totalFlow && pkg.usedFlow) {
+            const usedPercent = calculatePercentage(pkg.usedFlow, pkg.totalFlow);
+            const progress = createSimpleProgressBar(usedPercent, 100, 15);
+            
+            result += `    📊 [${progress}] ${usedPercent}% 已使用\n`;
+            result += `    📱 已用：${formatFlow(pkg.usedFlow)} | 剩余：${formatFlow(pkg.totalFlow - pkg.usedFlow)} | 总量：${formatFlow(pkg.totalFlow)}\n`;
+          }
+          
+          // 解析失效时间
+          const expireTime = pkg.outOfServiceTime || pkg.expireDate || pkg.effectDate;
+          if (expireTime) {
+            const expireText = formatPackageDate(expireTime);
+            const expireDays = calculateExpireDays(expireTime);
+            const status = getPackageStatus(expireTime);
+            
+            result += `    ⏰ 失效时间：${expireText}\n`;
+            result += `    ${status.icon} 状态：${status.status}\n`;
+          }
+          
+          if (pkg.packageStatus) {
+            result += `    📄 状态：${pkg.packageStatus}\n`;
+          }
+        }
+      }
+      
+      // 如果还是没有找到，显示调试信息
+      if (packageCount === 0) {
+        console.log('⚠️ 未找到可解析的流量包信息');
+        result += `\n⚠️ 暂无可显示的流量包详细信息\n`;
+        result += `🔍 数据结构键：${Object.keys(actualData).join(', ')}\n`;
+        
+        if (actualData.productOFFRatable) {
+          result += `📊 产品信息键：${Object.keys(actualData.productOFFRatable).join(', ')}\n`;
+        }
+      }
+    }
     
-    return result.trim();
+    // 添加使用提示（如果存在）
+    if (actualData.tips) {
+      result += `\n💡 使用说明\n`;
+      const tips = actualData.tips.split('\n').filter((tip: string) => tip.trim());
+      for (let i = 0; i < Math.min(tips.length, 5); i++) {
+        result += `  ${i + 1}. ${tips[i].trim()}\n`;
+      }
+    }
+    
+    // 统计信息
+    if (packageCount > 0) {
+      result += `\n📈 统计概览\n`;
+      result += `  📦 总流量包数量：${packageCount}个\n`;
+      
+      // 如果有语音播报信息，也显示出来
+      if (actualData.voiceMessage) {
+        result += `  🔊 语音播报：${actualData.voiceMessage}\n`;
+      }
+    }
+    
+    return packageCount > 0 ? result : '';
   }
   
   // 转换流量单位为KB
@@ -284,115 +320,204 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
     return result;
   }
   
-  // 格式化账户详细信息
+  // 格式化账户详细信息 - 根据实际API数据结构重写
   private formatImportantData(importantData?: ImportantData): string {
     if (!importantData) {
       return '';
     }
     
-    // 尝试多种数据结构
-    let data: any = null;
+    console.log('🔍 调试：importantData 原始数据：', JSON.stringify(importantData, null, 2));
+    
+    // 根据实际API数据结构解析数据
+    let actualData: any = null;
+    
+    // 优先尝试从responseData.data获取
     if (importantData.responseData?.data) {
-      data = importantData.responseData.data;
-    } else if ((importantData as any).data) {
-      data = (importantData as any).data;
-    } else {
-      data = importantData;
+      actualData = importantData.responseData.data;
+    }
+    // 其次尝试从data字段获取
+    else if ((importantData as any).data) {
+      actualData = (importantData as any).data;
+    }
+    // 最后尝试根级别
+    else {
+      actualData = importantData;
     }
     
-    if (!data) {
+    if (!actualData) {
+      console.log('⚠️ 无法找到有效的数据结构');
       return '';
     }
+    
+    console.log('🔍 解析出的 actualData：', JSON.stringify(actualData, null, 2));
     
     let result = '\n📋 账户详细信息\n';
+    let hasContent = false;
     
-    // 实时费用信息（优先显示）
-    // 检查多种可能的数据结构
-    let realtimeFees = data.realtimeFees || data.realtimeFee;
-    if (realtimeFees) {
-      result += `\n💸 ${realtimeFees.title}\n`;
-      result += `  📊 ${realtimeFees.subTitle}：${realtimeFees.subTitleHh}\n`;
+    // 1. 解析实时费用信息（balanceInfo.phoneBillRegion）
+    if (actualData.balanceInfo?.phoneBillRegion) {
+      const phoneBill = actualData.balanceInfo.phoneBillRegion;
+      result += `\n💸 ${phoneBill.title}\n`;
+      result += `  📊 ${phoneBill.subTitle}：${phoneBill.subTitleHh}\n`;
+      hasContent = true;
+      console.log('✅ 找到实时费用信息');
     }
     
-    // 也检查是否有直接匹配的实时费用数据
-    if (data.title && data.subTitle && data.subTitleHh && !data.barPercent) {
-      result += `\n💸 ${data.title}\n`;
-      result += `  📊 ${data.subTitle}：${data.subTitleHh}\n`;
-    }
-    
-    // 月费构成信息 - 检查多种结构
-    let monthlyFees = data.monthlyFees || data.monthlyFee || data.fees;
-    if (!monthlyFees && Array.isArray(data)) {
-      // 如果data本身是数组，检查月费构成数据
-      monthlyFees = data.filter(item => item.barRightSubTitle && item.barPercent);
-    }
-    
-    if (monthlyFees && monthlyFees.length > 0) {
+    // 2. 解析月费构成信息（balanceInfo.phoneBillBars）
+    if (actualData.balanceInfo?.phoneBillBars && Array.isArray(actualData.balanceInfo.phoneBillBars)) {
       result += `\n💰 月费构成\n`;
-      for (const fee of monthlyFees) {
-        const progress = createSimpleProgressBar(parseInt(fee.barPercent), 100, 10);
-        result += `  📋 ${fee.title} (${fee.subTilte || fee.subTitle})\n`;
-        result += `      [${progress}] ${fee.barRightSubTitle}\n`;
+      for (const fee of actualData.balanceInfo.phoneBillBars) {
+        if (fee.title && fee.barRightSubTitle) {
+          const progress = createSimpleProgressBar(parseInt(fee.barPercent) || 0, 100, 10);
+          result += `  📋 ${fee.title} (${fee.subTilte || fee.barPercent + '%'})\n`;
+          result += `      [${progress}] ${fee.barRightSubTitle}\n`;
+        }
       }
+      hasContent = true;
+      console.log('✅ 找到月费构成信息');
     }
     
-    // 云盘空间信息 - 检查多种结构
-    let cloudStorage = data.cloudStorage || data.storage;
-    if (!cloudStorage && Array.isArray(data)) {
-      // 如果data本身是数组，检查云盘空间数据
-      cloudStorage = data.filter(item => item.leftTitleHh && item.rightTitleHh && item.rightTitleEnd);
-    }
-    
-    if (cloudStorage && cloudStorage.length > 0) {
+    // 3. 解析云盘空间信息（storageInfo.flowList）
+    if (actualData.storageInfo?.flowList && Array.isArray(actualData.storageInfo.flowList)) {
       result += `\n☁️ 云盘空间\n`;
-      for (const storage of cloudStorage) {
-        const percent = parseInt(storage.barPercent);
-        const progress = createSimpleProgressBar(percent, 100, 15);
-        result += `  📂 ${storage.title}\n`;
-        result += `      ${storage.leftTitle}：${storage.leftTitleHh} | ${storage.rightTitle}：${storage.rightTitleHh}\n`;
-        result += `      [${progress}] ${percent}% 已使用 ${storage.rightTitleEnd}\n`;
+      for (const storage of actualData.storageInfo.flowList) {
+        if (storage.title && storage.leftTitleHh && storage.rightTitleHh) {
+          const percent = parseInt(storage.barPercent) || 0;
+          const progress = createSimpleProgressBar(percent, 100, 15);
+          result += `  📂 ${storage.title}\n`;
+          result += `      ${storage.leftTitle}：${storage.leftTitleHh} | ${storage.rightTitle}：${storage.rightTitleHh}\n`;
+          result += `      [${progress}] ${percent}% 已使用${storage.rightTitleEnd ? ' ' + storage.rightTitleEnd : ''}\n`;
+        }
+      }
+      hasContent = true;
+      console.log('✅ 找到云盘空间信息');
+    }
+    
+    // 4. 解析账户余额详情（balanceInfo.indexBalanceDataInfo）
+    if (actualData.balanceInfo?.indexBalanceDataInfo) {
+      const balanceInfo = actualData.balanceInfo.indexBalanceDataInfo;
+      result += `\n💵 账户余额详情\n`;
+      result += `  💰 可用余额：¥${balanceInfo.balance}\n`;
+      if (balanceInfo.arrear && balanceInfo.arrear !== '0.00') {
+        result += `  🔴 欠费金额：¥${balanceInfo.arrear}\n`;
+      }
+      hasContent = true;
+      console.log('✅ 找到账户余额详情');
+    }
+    
+    // 5. 解析积分信息（integralInfo）
+    if (actualData.integralInfo?.integral) {
+      result += `\n🎁 积分信息\n`;
+      result += `  ⭐ 剩余积分：${actualData.integralInfo.integral}分\n`;
+      hasContent = true;
+      console.log('✅ 找到积分信息');
+    }
+    
+    // 6. 解析流量详情（flowInfo.flowList） - 可能包含流量包细节
+    if (actualData.flowInfo?.flowList && Array.isArray(actualData.flowInfo.flowList)) {
+      result += `\n📊 流量详细统计\n`;
+      for (const flow of actualData.flowInfo.flowList) {
+        if (flow.title && flow.leftTitleHh && flow.rightTitleHh) {
+          const percent = parseInt(flow.barPercent) || 0;
+          const progress = createSimpleProgressBar(percent, 100, 12);
+          result += `  📱 ${flow.title}\n`;
+          result += `      ${flow.leftTitle}：${flow.leftTitleHh} | ${flow.rightTitle}：${flow.rightTitleHh}\n`;
+          result += `      [${progress}] ${percent}% 已使用${flow.rightTitleEnd ? ' ' + flow.rightTitleEnd : ''}\n`;
+        }
+      }
+      hasContent = true;
+      console.log('✅ 找到流量详细统计');
+    }
+    
+    // 7. 解析语音详情（voiceInfo.voiceBars）
+    if (actualData.voiceInfo?.voiceBars && Array.isArray(actualData.voiceInfo.voiceBars)) {
+      result += `\n📞 语音详细统计\n`;
+      for (const voice of actualData.voiceInfo.voiceBars) {
+        if (voice.title && voice.leftTitleHh && voice.rightTitleHh) {
+          const percent = parseInt(voice.barPercent) || 0;
+          const progress = createSimpleProgressBar(percent, 100, 12);
+          result += `  📞 ${voice.title}\n`;
+          result += `      ${voice.leftTitle}：${voice.leftTitleHh} | ${voice.rightTitle}：${voice.rightTitleHh}\n`;
+          result += `      [${progress}] ${percent}% 已使用${voice.rightTitleEnd ? ' ' + voice.rightTitleEnd : ''}\n`;
+        }
+      }
+      hasContent = true;
+      console.log('✅ 找到语音详细统计');
+    }
+    
+    // 8. 如果还是没有内容，尝试自动识别其他可能的数据结构
+    if (!hasContent) {
+      console.log('🔍 尝试自动识别其他数据结构...');
+      
+      // 递归搜索可能的费用和使用量数据
+      const searchForUsageData = (obj: any, path: string = ''): any => {
+        for (const [key, value] of Object.entries(obj)) {
+          const currentPath = path ? `${path}.${key}` : key;
+          
+          if (Array.isArray(value)) {
+            // 检查是否是费用构成数据
+            if (value.length > 0 && value[0].title && value[0].barRightSubTitle) {
+              console.log(`🎯 找到费用构成数据于：${currentPath}`);
+              result += `\n💰 费用明细 (${key})\n`;
+              for (const fee of value) {
+                const percent = parseInt(fee.barPercent) || 0;
+                const progress = createSimpleProgressBar(percent, 100, 10);
+                result += `  📋 ${fee.title} (${fee.subTilte || fee.subTitle || percent + '%'})\n`;
+                result += `      [${progress}] ${fee.barRightSubTitle}\n`;
+              }
+              hasContent = true;
+            }
+            // 检查是否是使用量统计数据
+            else if (value.length > 0 && value[0].leftTitleHh && value[0].rightTitleHh) {
+              console.log(`🎯 找到使用量统计数据于：${currentPath}`);
+              result += `\n📊 使用量统计 (${key})\n`;
+              for (const usage of value) {
+                const percent = parseInt(usage.barPercent) || 0;
+                const progress = createSimpleProgressBar(percent, 100, 15);
+                result += `  📂 ${usage.title}\n`;
+                result += `      ${usage.leftTitle}：${usage.leftTitleHh} | ${usage.rightTitle}：${usage.rightTitleHh}\n`;
+                result += `      [${progress}] ${percent}% 已使用${usage.rightTitleEnd ? ' ' + usage.rightTitleEnd : ''}\n`;
+              }
+              hasContent = true;
+            }
+          } else if (typeof value === 'object' && value !== null) {
+            // 检查是否是实时费用信息
+            const feeObj = value as any;
+            if (feeObj.title && feeObj.subTitle && feeObj.subTitleHh) {
+              console.log(`🎯 找到实时费用信息于：${currentPath}`);
+              result += `\n💸 ${feeObj.title}\n`;
+              result += `  📊 ${feeObj.subTitle}：${feeObj.subTitleHh}\n`;
+              hasContent = true;
+            } else {
+              // 递归搜索
+              searchForUsageData(value, currentPath);
+            }
+          }
+        }
+      };
+      
+      searchForUsageData(actualData);
+    }
+    
+    // 如果还是没有内容，显示调试信息
+    if (!hasContent) {
+      console.log('⚠️ 未找到可解析的账户详细信息');
+      result += `\n⚠️ 暂无可显示的账户详细信息\n`;
+      result += `🔍 数据结构键：${Object.keys(actualData).join(', ')}\n`;
+      
+      // 显示主要数据结构的键
+      if (actualData.balanceInfo) {
+        result += `📊 余额信息键：${Object.keys(actualData.balanceInfo).join(', ')}\n`;
+      }
+      if (actualData.flowInfo) {
+        result += `📱 流量信息键：${Object.keys(actualData.flowInfo).join(', ')}\n`;
+      }
+      if (actualData.storageInfo) {
+        result += `☁️ 存储信息键：${Object.keys(actualData.storageInfo).join(', ')}\n`;
       }
     }
     
-    // 会员信息
-    if (data.memberInfo) {
-      result += `\n👤 会员信息\n`;
-      if (data.memberInfo.memberName) {
-        result += `  📝 会员名称：${data.memberInfo.memberName}\n`;
-      }
-      if (data.memberInfo.memberGrade) {
-        result += `  ⭐ 会员等级：${data.memberInfo.memberGrade}\n`;
-      }
-    }
-    
-    // 账户信息
-    if (data.accountInfo) {
-      result += `\n🏦 账户信息\n`;
-      if (data.accountInfo.accountStatus) {
-        result += `  📊 账户状态：${data.accountInfo.accountStatus}\n`;
-      }
-      if (data.accountInfo.creditLevel) {
-        result += `  💳 信用等级：${data.accountInfo.creditLevel}\n`;
-      }
-    }
-    
-    // 余额信息
-    if (data.balanceInfo) {
-      result += `\n💵 详细余额\n`;
-      if (data.balanceInfo.realBalance !== undefined) {
-        result += `  💰 实际余额：¥${(data.balanceInfo.realBalance / 100).toFixed(2)}\n`;
-      }
-      if (data.balanceInfo.creditBalance !== undefined) {
-        result += `  🏧 信用额度：¥${(data.balanceInfo.creditBalance / 100).toFixed(2)}\n`;
-      }
-    }
-    
-    // 如果没有任何有效信息，返回空字符串
-    if (result === '\n📋 账户详细信息\n') {
-      return '';
-    }
-    
-    return result;
+    return hasContent ? result : '';
   }
   
   // 主格式化方法（增强版）

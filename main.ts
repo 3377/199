@@ -948,21 +948,24 @@ async function handleRequest(request: Request): Promise<Response> {
     if (url.pathname === '/' && method === 'GET') {
       const result = await handleQuery(false, false, phoneParam || undefined);
       const content = result.success ? result.data as string : `❌ 查询失败: ${result.error}`;
-      const html = generateMainPage(content, '电信套餐查询', multiConfig.users, phoneParam || multiConfig.defaultUser, multiConfig.cacheTime);
+      const queryTimestamp = result.success ? Date.now() : undefined;
+      const html = generateMainPage(content, '电信套餐查询', multiConfig.users, phoneParam || multiConfig.defaultUser, multiConfig.cacheTime, queryTimestamp);
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
     
     if (url.pathname === '/query' && method === 'GET') {
       const result = await handleQuery(false, forceRefresh, phoneParam || undefined);
       const content = result.success ? result.data as string : `❌ 查询失败: ${result.error}`;
-      const html = generateMainPage(content, '基础查询结果', multiConfig.users, phoneParam || multiConfig.defaultUser, multiConfig.cacheTime);
+      const queryTimestamp = result.success ? Date.now() : undefined;
+      const html = generateMainPage(content, '基础查询结果', multiConfig.users, phoneParam || multiConfig.defaultUser, multiConfig.cacheTime, queryTimestamp);
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
     
     if (url.pathname === '/enhanced' && method === 'GET') {
       const result = await handleQuery(true, forceRefresh, phoneParam || undefined);
       const content = result.success ? result.data as string : `❌ 查询失败: ${result.error}`;
-      const html = generateMainPage(content, '增强查询结果', multiConfig.users, phoneParam || multiConfig.defaultUser, multiConfig.cacheTime);
+      const queryTimestamp = result.success ? Date.now() : undefined;
+      const html = generateMainPage(content, '增强查询结果', multiConfig.users, phoneParam || multiConfig.defaultUser, multiConfig.cacheTime, queryTimestamp);
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
     

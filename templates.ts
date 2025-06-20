@@ -1,7 +1,14 @@
 import type { UserConfig } from './types.ts';
 
 // HTML页面模板  
-export function generateMainPage(content: string, title: string = '电信套餐查询', users: UserConfig[] = [], currentUser: string = '', cacheTime: number = 120): string {
+export function generateMainPage(content: string, title: string = '电信套餐查询', users: UserConfig[] = [], currentUser: string = '', cacheTime: number = 120, queryTimestamp?: number): string {
+  const userOptions = users.map(user => 
+    `<option value="${user.phonenum}" ${user.phonenum === currentUser ? 'selected' : ''}>${user.displayName}</option>`
+  ).join('');
+  
+  // 如果提供了查询时间戳，使用它；否则使用当前时间
+  const baseTimestamp = queryTimestamp || Date.now();
+  
   return `
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -496,11 +503,7 @@ export function generateMainPage(content: string, title: string = '电信套餐�
         ${users.length > 1 ? `
         <div class="mobile-phone-selector">
             <select onchange="switchPhoneNumber(this.value)">
-                ${users.map(user => `
-                    <option value="${user.phonenum}" ${currentUser === user.phonenum ? 'selected' : ''}>
-                        ${user.displayName}
-                    </option>
-                `).join('')}
+                ${userOptions}
             </select>
         </div>
         ` : ''}
@@ -529,7 +532,7 @@ export function generateMainPage(content: string, title: string = '电信套餐�
         </div>
     </div>
     
-    <button class="refresh-btn" onclick="window.location.reload()" title="刷新页面">
+    <button class="refresh-btn" onclick="refreshData()" title="刷新数据">
         🔄
     </button>
     
@@ -559,40 +562,42 @@ export function generateMainPage(content: string, title: string = '电信套餐�
             window.location.href = currentPath + '?' + currentSearch.toString();
         }
         
-        // 自动刷新功能
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('auto')) {
-            const interval = parseInt(urlParams.get('auto')) * 1000 || 30000;
-            setTimeout(() => {
-                window.location.reload();
-            }, interval);
+        // 刷新数据功能
+        function refreshData() {
+            const refreshBtn = document.querySelector('.refresh-btn');
+            refreshBtn.classList.add('loading');
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('refresh', '1');
+            window.location.href = window.location.pathname + '?' + urlParams.toString();
         }
-
-        // 缓存倒计时功能
-        function initCacheTimer() {
-            const cacheTime = ${cacheTime}; // 缓存时间（秒）
-            const pageLoadTime = Date.now(); // 页面加载时间
+        
+        // 缓存倒计时功能 - 基于查询时间而不是页面加载时间
+        function startCacheTimer() {
+            const cacheTimeSeconds = ${cacheTime}; // 缓存时间（秒）
+            const queryTimestamp = ${baseTimestamp}; // 查询时间戳
             
             function updateTimer() {
                 const now = Date.now();
-                const elapsed = Math.floor((now - pageLoadTime) / 1000);
-                const remaining = Math.max(0, cacheTime - elapsed);
+                const elapsed = Math.floor((now - queryTimestamp) / 1000); // 已过去的秒数
+                const remaining = cacheTimeSeconds - elapsed; // 剩余秒数
                 
                 const timerElement = document.getElementById('cache-timer');
-                if (timerElement) {
-                    if (remaining > 0) {
-                        const minutes = Math.floor(remaining / 60);
-                        const seconds = remaining % 60;
-                        if (minutes > 0) {
-                            timerElement.textContent = \`缓存剩余: \${minutes}分\${seconds}秒\`;
-                        } else {
-                            timerElement.textContent = \`缓存剩余: \${seconds}秒\`;
-                        }
-                        timerElement.style.color = '#4a5568';
+                
+                if (remaining > 0) {
+                    const minutes = Math.floor(remaining / 60);
+                    const seconds = remaining % 60;
+                    
+                    if (minutes > 0) {
+                        timerElement.textContent = \`缓存剩余: \${minutes}分\${seconds}秒\`;
                     } else {
-                        timerElement.textContent = '缓存已过期';
-                        timerElement.style.color = '#e53e3e';
+                        timerElement.textContent = \`缓存剩余: \${seconds}秒\`;
                     }
+                    
+                    timerElement.className = 'cache-info';
+                } else {
+                    timerElement.textContent = '缓存已过期';
+                    timerElement.className = 'cache-info cache-expired';
                 }
             }
             
@@ -603,9 +608,19 @@ export function generateMainPage(content: string, title: string = '电信套餐�
             setInterval(updateTimer, 1000);
         }
         
-        // 启动缓存倒计时
-        initCacheTimer();
+        // 页面加载完成后启动倒计时
+        document.addEventListener('DOMContentLoaded', startCacheTimer);
         
+        // 自动刷新功能（可选）
+        const urlParams = new URLSearchParams(window.location.search);
+        const autoRefresh = urlParams.get('auto');
+        if (autoRefresh) {
+            const refreshInterval = parseInt(autoRefresh) * 1000;
+            setTimeout(() => {
+                window.location.reload();
+            }, refreshInterval);
+        }
+
         // 键盘快捷键
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey || e.metaKey) {
