@@ -350,7 +350,7 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
     return result;
   }
   
-  // 格式化账户详细信息 - 根据实际API数据结构重写
+  // 格式化账户详细信息 - 根据实际API数据结构完全重写
   private formatImportantData(importantData?: ImportantData): string {
     if (!importantData) {
       return '';
@@ -398,8 +398,9 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
       result += `\n💰 月费构成\n`;
       for (const fee of actualData.balanceInfo.phoneBillBars) {
         if (fee.title && fee.barRightSubTitle) {
-          const progress = createSimpleProgressBar(parseInt(fee.barPercent) || 0, 100, 10);
-          result += `  📋 ${fee.title} (${fee.subTilte || fee.subTitle || fee.barPercent + '%'})\n`;
+          const percent = parseInt(fee.barPercent) || 0;
+          const progress = createSimpleProgressBar(percent, 100, 10);
+          result += `  📋 ${fee.title} (${fee.subTilte || fee.subTitle || percent + '%'})\n`;
           result += `      [${progress}] ${fee.barRightSubTitle}\n`;
         }
       }
@@ -480,11 +481,30 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
       const storageData = actualData.storageInfo.storageDataInfo;
       result += `\n💾 存储空间总览\n`;
       if (storageData.balance) {
-        const balanceGB = (parseInt(storageData.balance) / 1024 / 1024 / 1024).toFixed(2);
+        const balanceBytes = parseInt(storageData.balance);
+        const balanceGB = (balanceBytes / 1024 / 1024 / 1024).toFixed(2);
         result += `  ☁️ ${storageData.title}：${balanceGB}GB\n`;
       }
       hasContent = true;
       console.log('✅ 找到存储空间总览');
+    }
+    
+    // 9. 解析总用量信息（flowInfo.flowRegion）
+    if (actualData.flowInfo?.flowRegion) {
+      const flowRegion = actualData.flowInfo.flowRegion;
+      result += `\n📈 总用量信息\n`;
+      result += `  📊 ${flowRegion.title}：${flowRegion.subTitle} ${flowRegion.subTitleHh}\n`;
+      hasContent = true;
+      console.log('✅ 找到总用量信息');
+    }
+    
+    // 10. 解析语音总用量信息（voiceInfo.voiceRegion）
+    if (actualData.voiceInfo?.voiceRegion) {
+      const voiceRegion = actualData.voiceInfo.voiceRegion;
+      result += `\n📞 语音总用量信息\n`;
+      result += `  📊 ${voiceRegion.title}：${voiceRegion.subTitle} ${voiceRegion.subTitleHh}\n`;
+      hasContent = true;
+      console.log('✅ 找到语音总用量信息');
     }
     
     // 如果还是没有内容，显示调试信息帮助排查
