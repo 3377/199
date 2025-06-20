@@ -4,130 +4,209 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-一个基于 Deno 的电信套餐查询格式化服务，支持多用户、实时查询、美观展示和API调用。
+> 🚀 基于 Deno 的智能电信套餐查询系统，支持多用户管理、实时监控、机器人通知集成
 
-## ✨ 功能特性
+## 📋 目录
 
-### 🔐 安全认证
-- **密码保护**：基于 session 的认证系统
-- **环境变量配置**：WEB_PASSWORD 控制访问密码
-- **24小时免登录**：首次验证后持久化 session
+- [项目概述](#-项目概述)
+- [核心特性](#-核心特性)  
+- [快速开始](#-快速开始)
+- [部署指南](#-部署指南)
+- [API 接口文档](#-api-接口文档)
+- [使用示例](#-使用示例)
+- [高级配置](#-高级配置)
+- [故障排除](#-故障排除)
 
-### 📱 多用户支持
-- **多手机号配置**：支持同时配置多个手机号查询
-- **用户切换器**：左侧悬浮选择器，便捷切换用户
-- **隐私保护**：手机号显示为 `199****1016` 格式
+## 🎯 项目概述
 
-### 🎨 现代化界面
-- **响应式设计**：完美适配手机、平板、桌面
-- **美观UI**：渐变背景、毛玻璃效果、动画交互
-- **进度条可视化**：直观显示流量使用情况
-- **快捷操作**：底部链接、悬浮刷新按钮
+电信套餐查询格式化服务是一个现代化的电信数据监控解决方案，提供：
 
-### 📦 流量包增强显示
-- **订购时间显示**：显示流量包的订购、生效和到期时间
-- **状态智能识别**：自动识别流量包状态（正常/即将到期/已过期）
-- **时间排序**：按到期时间排序，即将到期的优先显示
-- **统计分析**：提供详细的流量包统计（总数、活跃、即将到期、已过期）
-- **到期提醒**：显示具体的剩余天数和到期提醒
+- **🔍 智能查询** - 实时获取电信套餐、流量、余额等信息
+- **📊 美观展示** - 进度条可视化、智能提醒、数据分析
+- **🤖 自动通知** - 支持钉钉、Telegram机器人推送
+- **🔄 多用户管理** - 同时监控多个手机号
+- **⚡ 高性能** - 智能缓存、并发查询、API优化
 
-### ⚡ 性能优化
-- **智能缓存**：默认2分钟缓存，提高响应速度
-- **实时查询**：支持强制刷新获取最新数据
-- **并行查询**：多用户数据并行获取
+### 适用场景
 
-### 🔌 API接口
-- **RESTful设计**：支持 GET/POST 多种调用方式
-- **多种格式**：HTML页面、JSON数据、纯文本
-- **CORS支持**：跨域友好，便于集成
+- **个人监控** - 日常查看套餐使用情况
+- **家庭管理** - 统一管理家庭成员的手机套餐
+- **企业监控** - 批量监控公司手机号使用情况
+- **自动化运维** - 集成到监控系统，自动报警
 
-### 🤖 机器人通知集成
-- **钉钉群机器人**：支持Webhook推送套餐使用情况
-- **Telegram Bot**：支持发送到频道或私聊
-- **双平台同发**：一个请求同时发送到多个平台
-- **智能格式化**：针对不同平台优化消息格式
-- **灵活配置**：支持环境变量和参数配置
+## ✨ 核心特性
 
-## 🚀 快速部署
+### 🎨 用户体验
+- **现代化界面** - 响应式设计，渐变背景，毛玻璃效果
+- **智能交互** - 用户切换器，快捷操作，自动刷新
+- **数据可视化** - 进度条显示，状态图标，趋势分析
+- **隐私保护** - 手机号脱敏显示，安全认证
 
-### Deno Deploy 部署
+### 📱 查询功能  
+- **基础查询** - 余额、流量、通话时长等核心信息
+- **增强查询** - 流量包详情、使用分析、智能提醒
+- **实时更新** - 强制刷新，缓存管理，数据同步
+- **多格式输出** - HTML页面、JSON数据、格式化文本
 
-1. **Fork仓库**：Fork本仓库到你的GitHub账号
+### 🤖 通知集成
+- **钉钉机器人** - Webhook推送，Markdown格式支持
+- **Telegram Bot** - 频道/群组发送，多种解析模式
+- **智能格式化** - 平台优化，自动适配，时间戳
+- **批量发送** - 一键多平台，状态反馈，错误处理
 
-2. **配置 Deno Deploy**：
+### 🔧 技术特性
+- **高可用** - 容错处理，优雅降级，状态监控
+- **高性能** - 智能缓存，并发查询，资源优化
+- **安全性** - 环境变量配置，Session认证，数据加密
+- **扩展性** - 模块化设计，RESTful API，易于集成
+
+## 🚀 快速开始
+
+### 方式一：在线体验 (推荐)
+
+1. **访问演示站点**
+   ```
+   https://199.deno.dev
+   ```
+
+2. **配置手机号** (可选)
+   - 如需查看自己的数据，请Fork项目并部署
+
+### 方式二：一键部署
+
+1. **Fork 本仓库**
+   
+2. **部署到 Deno Deploy**
    - 访问 [Deno Deploy](https://deno.com/deploy)
    - 连接 GitHub 仓库
    - 选择 `main.ts` 作为入口文件
 
-3. **设置环境变量**：
+3. **设置环境变量**
    ```bash
    # 必需配置
-   TELECOM_PHONENUM=199****1016,138****5678,159****4321
-   TELECOM_PASSWORD=123456,234567,345678
+   TELECOM_PHONENUM=199****1016,138****5678
+   TELECOM_PASSWORD=123456,234567
    
-   # 可选配置
+   # 可选配置  
    WEB_PASSWORD=your_web_password
-   API_BASE=https://dx.ll.sd
-   CACHE_TIME=120000
    ```
 
-### 环境变量说明
+4. **访问服务**
+   ```
+   https://your-project.deno.dev
+   ```
+
+### 方式三：本地开发
+
+```bash
+# 克隆项目
+git clone https://github.com/your-username/telecom-formatter.git
+cd telecom-formatter
+
+# 设置环境变量
+export TELECOM_PHONENUM="199****1016"
+export TELECOM_PASSWORD="123456"
+
+# 启动服务
+deno run --allow-all main.ts
+```
+
+## 📦 部署指南
+
+### 环境变量配置
 
 | 变量名 | 必需 | 说明 | 示例 |
 |--------|------|------|------|
+| **基础配置** |
 | `TELECOM_PHONENUM` | ✅ | 手机号列表（逗号分隔） | `199****1016,138****5678` |
 | `TELECOM_PASSWORD` | ✅ | 对应密码列表（逗号分隔） | `123456,234567` |
 | `WEB_PASSWORD` | ❌ | 网页访问密码 | `admin123` |
+| **性能配置** |
 | `API_BASE` | ❌ | 后端API地址 | `https://dx.ll.sd` |
 | `CACHE_TIME` | ❌ | 缓存时间（秒） | `120` |
-| `DINGTALK_WEBHOOK` | ❌ | 钉钉群机器人Webhook地址 | `https://oapi.dingtalk.com/robot/send?access_token=xxx` |
+| **通知配置** |
+| `DINGTALK_WEBHOOK` | ❌ | 钉钉群机器人Webhook | `https://oapi.dingtalk.com/robot/send?access_token=xxx` |
 | `TELEGRAM_BOT_TOKEN` | ❌ | Telegram机器人Token | `1234567890:ABCDefGhiJklMnoPqrStUvWxYz` |
 | `TELEGRAM_CHAT_ID` | ❌ | Telegram默认聊天ID | `@your_channel` 或 `-1001234567890` |
 
-> **注意**：手机号和密码必须一一对应，数量要匹配
+### Deno Deploy 部署步骤
 
-## 📖 使用说明
+1. **准备代码仓库**
+   ```bash
+   git clone https://github.com/your-username/telecom-formatter.git
+   git add .
+   git commit -m "部署配置"
+   git push origin main
+   ```
 
-### 网页界面访问
+2. **创建 Deno Deploy 项目**
+   - 登录 [Deno Deploy](https://deno.com/deploy)
+   - 点击 "New Project"
+   - 选择 GitHub 仓库
+   - 入口文件：`main.ts`
 
-1. **首次访问**：输入设置的 `WEB_PASSWORD`
-2. **选择用户**：左侧悬浮选择器切换手机号
-3. **查看数据**：选择不同端点查看不同格式数据
+3. **配置环境变量**
+   - 进入项目设置 → Environment Variables
+   - 添加上表中的必需变量
+   - 保存并重新部署
 
-### 可用端点
+4. **验证部署**
+   ```bash
+   curl https://your-project.deno.dev/status
+   ```
 
-| 端点 | 方法 | 说明 | 示例 |
+### 其他平台部署
+
+<details>
+<summary>Cloudflare Workers</summary>
+
+1. 安装 Wrangler CLI
+2. 修改 `wrangler.toml` 配置
+3. 执行 `wrangler publish`
+
+</details>
+
+<details>
+<summary>Docker 部署</summary>
+
+```dockerfile
+FROM denoland/deno:1.40.0
+WORKDIR /app
+COPY . .
+RUN deno cache main.ts
+EXPOSE 8000
+CMD ["deno", "run", "--allow-all", "main.ts"]
+```
+
+</details>
+
+## 📡 API 接口文档
+
+### 接口概览
+
+| 类别 | 端点 | 方法 | 说明 |
 |------|------|------|------|
-| `/query` | GET | 基础套餐查询 | `/query?phone=199****1016` |
-| `/enhanced` | GET | 增强套餐查询（进度条） | `/enhanced?phone=199****1016&refresh=1` |
-| `/json` | GET | JSON数据展示 | `/json?phone=199****1016` |
-| `/status` | GET | 系统状态检查 | `/status` |
-| `/clear-cache` | GET/POST | 清除缓存 | `/clear-cache` |
-| `/api/query` | POST | API查询接口 | 见下方API说明 |
+| **网页端点** | `/` | GET | 主页面 |
+| | `/query` | GET | 基础查询页面 |
+| | `/enhanced` | GET | 增强查询页面 |
+| | `/json` | GET | JSON数据页面 |
+| **管理端点** | `/status` | GET | 系统状态 |
+| | `/clear-cache` | GET/POST | 清除缓存 |
+| **API端点** | `/api/bot` | POST | 机器人集成接口 |
+| | `/api/query` | POST | 格式化查询接口 |
+| | `/api/login` | POST | 用户登录接口 |
+| **原始API** | `/api/qryImportantData` | POST | 套餐详细信息 |
+| | `/api/userFluxPackage` | POST | 流量包查询 |
+| | `/api/qryShareUsage` | POST | 共享流量查询 |
 
-### URL参数
+### 🤖 机器人集成接口 (推荐)
 
-- `phone`: 指定查询的手机号
-- `refresh=1`: 强制刷新，忽略缓存
-- `auto=30`: 自动刷新，30秒后重新加载
+**功能**：查询套餐信息并可选择性发送到钉钉或Telegram
 
-## 🔌 API 调用说明
-
-### 📤 机器人通知集成 API（新功能）
-
-**端点**: `POST /api/bot`
-
-支持查询套餐信息并同时发送到钉钉或Telegram机器人，适合自动化监控场景。
-
-#### 环境变量配置
-
-在部署平台设置以下环境变量：
-
-| 变量名 | 必需 | 说明 | 示例 |
-|--------|------|------|------|
-| `DINGTALK_WEBHOOK` | ❌ | 钉钉群机器人Webhook地址 | `https://oapi.dingtalk.com/robot/send?access_token=xxx` |
-| `TELEGRAM_BOT_TOKEN` | ❌ | Telegram机器人Token | `1234567890:ABCDefGhiJklMnoPqrStUvWxYz` |
-| `TELEGRAM_CHAT_ID` | ❌ | Telegram默认聊天ID | `@your_channel` 或 `-1001234567890` |
+```http
+POST /api/bot
+Content-Type: application/json
+```
 
 #### 请求参数
 
@@ -146,10 +225,18 @@
 |------|------|------|------|
 | `phonenum` | string | ✅ | 手机号码 |
 | `password` | string | ✅ | 查询密码 |
-| `type` | string | ❌ | 数据格式：`basic`、`enhanced`、`compact`（默认） |
-| `send_type` | string | ❌ | 发送平台：`dingtalk`、`telegram`、`both` |
-| `chat_id` | string | ❌ | Telegram聊天ID（覆盖环境变量） |
-| `use_markdown` | boolean | ❌ | 是否使用Markdown格式（仅Telegram） |
+| `type` | string | ❌ | 数据格式：`basic`/`enhanced`/`compact`(默认) |
+| `send_type` | string | ❌ | 发送平台：`dingtalk`/`telegram`/`both` |
+| `chat_id` | string | ❌ | Telegram聊天ID(覆盖环境变量) |
+| `use_markdown` | boolean | ❌ | 是否使用Markdown格式(仅Telegram) |
+
+#### 数据格式类型
+
+| 类型 | 用途 | 输出长度 | 适用场景 |
+|------|------|----------|----------|
+| `compact` | 紧凑版 | ~4行 | 钉钉/TG通知，日常监控 |
+| `basic` | 基础版 | ~15行 | 常规查询，包含关键详情 |
+| `enhanced` | 增强版 | ~50行 | 详细分析，完整信息 |
 
 #### 响应格式
 
@@ -169,7 +256,7 @@
         "message": "钉钉消息发送成功"
       },
       {
-        "platform": "telegram", 
+        "platform": "telegram",
         "success": true,
         "message": "Telegram消息发送成功"
       }
@@ -180,69 +267,76 @@
 }
 ```
 
-#### 使用示例
+### 📊 格式化查询接口
 
-**1. 仅查询，不发送通知**
-```bash
-curl -X POST https://199.deno.dev/api/bot \
-  -H "Content-Type: application/json" \
-  -d '{
-    "phonenum": "199****1016",
-    "password": "123456",
-    "type": "compact"
-  }'
+**功能**：获取格式化的套餐信息，支持多种输出格式
+
+```http
+POST /api/query
+Content-Type: application/json
 ```
 
-**2. 查询并发送到钉钉**
-```bash
-curl -X POST https://199.deno.dev/api/bot \
-  -H "Content-Type: application/json" \
-  -d '{
-    "phonenum": "199****1016", 
-    "password": "123456",
-    "type": "compact",
-    "send_type": "dingtalk"
-  }'
+#### 请求参数
+
+```json
+{
+  "phonenum": "199****1016",
+  "enhanced": true,
+  "format": "formatted"
+}
 ```
 
-**3. 查询并发送到Telegram**
-```bash
-curl -X POST https://199.deno.dev/api/bot \
-  -H "Content-Type: application/json" \
-  -d '{
-    "phonenum": "199****1016",
-    "password": "123456", 
-    "type": "compact",
-    "send_type": "telegram",
-    "chat_id": "@your_channel",
-    "use_markdown": true
-  }'
+| 参数 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `phonenum` | string | ✅ | 手机号码 |
+| `enhanced` | boolean | ❌ | 是否增强模式 |
+| `format` | string | ❌ | 输出格式：`formatted`(默认)/`json` |
+
+### 🔐 认证相关接口
+
+#### 用户登录
+
+```http
+POST /api/login
+Content-Type: application/json
 ```
 
-**4. 查询并同时发送到两个平台**
-```bash
-curl -X POST https://199.deno.dev/api/bot \
-  -H "Content-Type: application/json" \
-  -d '{
-    "phonenum": "199****1016",
-    "password": "123456",
-    "type": "enhanced", 
-    "send_type": "both"
-  }'
+```json
+{
+  "phonenum": "199****1016",
+  "password": "123456"
+}
 ```
 
-#### 定时监控脚本示例
+#### 会话管理
 
-**Shell脚本（适用于Linux/macOS）**
+- `GET /api/session/stats` - 会话统计
+- `GET /api/session/clean` - 清理过期会话
+- `GET /api/session/clear` - 清除所有会话
+
+### 📋 原始API接口
+
+这些接口与Python版本兼容，返回原始JSON数据：
+
+- `POST /api/qryImportantData` - 套餐详细信息  
+- `POST /api/userFluxPackage` - 流量包查询
+- `POST /api/qryShareUsage` - 共享流量查询
+- `POST /api/summary` - 综合信息查询
+
+## 💡 使用示例
+
+### 场景1：日常监控脚本
+
+**需求**：每天早上8点自动查询并发送到钉钉群
+
 ```bash
 #!/bin/bash
-# telecom_monitor.sh
+# telecom_daily_check.sh
 
+API_URL="https://199.deno.dev/api/bot"
 PHONE="199****1016"
 PASSWORD="123456"
-API_URL="https://199.deno.dev/api/bot"
 
-# 查询并发送到钉钉
 response=$(curl -s -X POST "$API_URL" \
   -H "Content-Type: application/json" \
   -d "{
@@ -252,444 +346,388 @@ response=$(curl -s -X POST "$API_URL" \
     \"send_type\": \"dingtalk\"
   }")
 
-echo "监控结果: $response"
+echo "✅ 监控完成: $response"
 ```
 
-**青龙面板定时任务**
+**部署方式**：
+```bash
+# 添加到crontab
+0 8 * * * /path/to/telecom_daily_check.sh
+```
+
+### 场景2：青龙面板集成
+
+**需求**：在青龙面板中监控多个手机号
+
 ```javascript
-// telecom_bot_monitor.js
+// telecom_multi_monitor.js
 const axios = require('axios');
 
-async function monitorTelecom() {
-  try {
-    const response = await axios.post('https://199.deno.dev/api/bot', {
-      phonenum: process.env.TELECOM_PHONE,
-      password: process.env.TELECOM_PASSWORD,
-      type: 'compact',
-      send_type: 'both'
-    });
-    
-    if (response.data.success) {
-      console.log('✅ 监控成功');
-      if (response.data.send_results) {
-        console.log(`📤 通知发送: 成功${response.data.send_results.total_sent}个，失败${response.data.send_results.total_failed}个`);
+const phones = [
+  { num: "199****1016", pwd: "123456", name: "主号" },
+  { num: "138****5678", pwd: "234567", name: "副号" }
+];
+
+async function checkAllPhones() {
+  for (const phone of phones) {
+    try {
+      const response = await axios.post('https://199.deno.dev/api/bot', {
+        phonenum: phone.num,
+        password: phone.pwd,
+        type: 'compact',
+        send_type: 'telegram'
+      });
+      
+      if (response.data.success) {
+        console.log(`✅ ${phone.name} 监控成功`);
+      } else {
+        console.error(`❌ ${phone.name} 监控失败: ${response.data.error}`);
       }
-    } else {
-      console.error('❌ 监控失败:', response.data.error);
+    } catch (error) {
+      console.error(`❌ ${phone.name} 请求异常: ${error.message}`);
     }
-  } catch (error) {
-    console.error('❌ 请求异常:', error.message);
-  }
-}
-
-monitorTelecom();
-```
-
-### 格式化查询 API
-
-**端点**: `POST /api/query`
-
-**请求格式**: `application/json` 或 `application/x-www-form-urlencoded`
-
-### 原始 API 接口（兼容 Python 版本）
-
-#### 用户登录
-
-**端点**: `POST /api/login`
-
-**请求示例**:
-```bash
-curl -X POST https://your-domain.deno.dev/api/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "phonenum": "199****1016",
-    "password": "123456"
-  }'
-```
-
-**响应示例**:
-```json
-{
-  "success": true,
-  "message": "登录成功",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "expires": 1703932800000,
-  "phonenum": "199****1016"
-}
-```
-
-#### 套餐信息查询
-
-**端点**: `POST /api/qryImportantData`
-
-**请求示例**:
-```bash
-curl -X POST https://your-domain.deno.dev/api/qryImportantData \
-  -H "Content-Type: application/json" \
-  -d '{
-    "phonenum": "199****1016",
-    "token": "your_token_here"
-  }'
-```
-
-#### 流量包查询
-
-**端点**: `POST /api/userFluxPackage`
-
-**请求示例**:
-```bash
-curl -X POST https://your-domain.deno.dev/api/userFluxPackage \
-  -H "Content-Type: application/json" \
-  -d '{
-    "phonenum": "199****1016", 
-    "token": "your_token_here"
-  }'
-```
-
-#### 共享流量查询
-
-**端点**: `POST /api/qryShareUsage`
-
-#### 综合信息查询
-
-**端点**: `POST /api/summary`
-
-### 会话管理 API
-
-#### 会话统计
-
-**端点**: `GET /api/session/stats`
-
-**响应示例**:
-```json
-{
-  "success": true,
-  "message": "获取会话统计成功",
-  "stats": {
-    "totalSessions": 5,
-    "activeSessions": 3,
-    "expiredSessions": 2,
-    "sessionsByPhone": {
-      "199****1016": 2,
-      "138****5678": 1
-    }
-  }
-}
-```
-
-#### 清理过期会话
-
-**端点**: `GET /api/session/clean`
-
-#### 清除所有会话
-
-**端点**: `GET /api/session/clear`
-
-### 格式化查询 API (原有)
-
-#### JSON 请求示例
-
-```bash
-curl -X POST https://your-domain.deno.dev/api/query \
-  -H "Content-Type: application/json" \
-  -d '{
-    "phonenum": "199****1016",
-    "enhanced": true,
-    "format": "formatted"
-  }'
-```
-
-#### 表单请求示例
-
-```bash
-curl -X POST https://your-domain.deno.dev/api/query \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d 'phonenum=199****1016&enhanced=true&format=json'
-```
-
-#### JavaScript 调用示例
-
-```javascript
-// 获取格式化文本
-const response = await fetch('https://your-domain.deno.dev/api/query', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    phonenum: '199****1016',
-    enhanced: true,
-    format: 'formatted'
-  })
-});
-
-const result = await response.json();
-console.log(result.data); // 格式化的文本
-
-// 获取原始JSON数据
-const jsonResponse = await fetch('https://your-domain.deno.dev/api/query', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    phonenum: '199****1016',
-    format: 'json'
-  })
-});
-
-const jsonResult = await jsonResponse.json();
-console.log(jsonResult.data); // 原始数据对象
-```
-
-#### Python 调用示例
-
-```python
-import requests
-import json
-
-# 获取格式化文本
-response = requests.post('https://your-domain.deno.dev/api/query', 
-    json={
-        'phonenum': '199****1016',
-        'enhanced': True,
-        'format': 'formatted'
-    }
-)
-
-result = response.json()
-if result['success']:
-    print(result['data'])  # 格式化的文本
-else:
-    print(f"错误: {result['error']}")
-
-# 获取原始JSON数据
-json_response = requests.post('https://your-domain.deno.dev/api/query',
-    json={
-        'phonenum': '199****1016', 
-        'format': 'json'
-    }
-)
-
-json_result = json_response.json()
-if json_result['success']:
-    data = json_result['data']
-    print(f"余额: {data['summary']['balance'] / 100}元")
-    print(f"流量: {data['summary']['flowUse'] / 1024 / 1024:.2f}GB")
-```
-
-#### 请求参数
-
-| 参数 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| `phonenum` | string | ✅ | 要查询的手机号 |
-| `enhanced` | boolean | ❌ | 是否使用增强模式（进度条） |
-| `format` | string | ❌ | 返回格式：`formatted`（默认）或 `json` |
-
-#### 响应格式
-
-```json
-{
-  "success": true,
-  "data": "格式化的文本内容或JSON对象",
-  "cached": false,
-  "phonenum": "199****1016",
-  "timestamp": "2024-01-01T12:00:00.000Z"
-}
-```
-
-#### 错误响应
-
-```json
-{
-  "success": false,
-  "error": "错误描述",
-  "cached": false,
-  "phonenum": "199****1016"
-}
-```
-
-## 🎯 集成示例
-
-### 在青龙面板中使用
-
-```javascript
-// qinglong_telecom.js
-const axios = require('axios');
-
-async function queryTelecom() {
-  try {
-    const response = await axios.post('https://your-domain.deno.dev/api/query', {
-      phonenum: process.env.TELECOM_PHONE,
-      enhanced: true,
-      format: 'formatted'
-    });
     
-    if (response.data.success) {
-      console.log(response.data.data);
-      // 发送到通知渠道
-      await notify(response.data.data);
-    } else {
-      console.error('查询失败:', response.data.error);
-    }
-  } catch (error) {
-    console.error('请求失败:', error.message);
+    // 避免频繁请求
+    await new Promise(resolve => setTimeout(resolve, 2000));
   }
 }
 
-queryTelecom();
+checkAllPhones();
 ```
 
-### 在 GitHub Actions 中使用
+### 场景3：GitHub Actions 自动化
+
+**需求**：每天检查流量使用情况，超过80%时自动通知
 
 ```yaml
-name: Daily Telecom Check
+# .github/workflows/telecom-monitor.yml
+name: Telecom Monitor
 on:
   schedule:
-    - cron: '0 9 * * *'  # 每天9点执行
+    - cron: '0 9,18 * * *'  # 每天9点和18点
 
 jobs:
-  check:
+  monitor:
     runs-on: ubuntu-latest
     steps:
-      - name: Query Telecom Data
+      - name: Check Telecom Usage
         run: |
-          response=$(curl -s -X POST https://your-domain.deno.dev/api/query \
+          response=$(curl -s -X POST https://199.deno.dev/api/bot \
             -H "Content-Type: application/json" \
-            -d '{"phonenum":"${{ secrets.PHONE }}","enhanced":true}')
+            -d '{
+              "phonenum": "${{ secrets.TELECOM_PHONE }}",
+              "password": "${{ secrets.TELECOM_PASSWORD }}",
+              "type": "basic",
+              "send_type": "telegram"
+            }')
           
-          echo "$response" | jq -r '.data'
+          echo "Monitor result: $response"
 ```
 
-## 🛠️ 本地开发
+### 场景4：Home Assistant 集成
+
+**需求**：在智能家居系统中显示套餐信息
+
+```yaml
+# configuration.yaml
+sensor:
+  - platform: rest
+    name: "电信套餐余额"
+    resource: "https://199.deno.dev/api/bot"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+    payload: |
+      {
+        "phonenum": "199****1016",
+        "password": "123456",
+        "type": "compact"
+      }
+    value_template: "{{ value_json.data | regex_findall('余额: ¥(\\d+\\.\\d+)') | first }}"
+    unit_of_measurement: "¥"
+    scan_interval: 3600
+```
+
+### 场景5：企业批量监控
+
+**需求**：监控公司所有手机号，生成使用报告
+
+```python
+# enterprise_monitor.py
+import requests
+import json
+import pandas as pd
+from datetime import datetime
+
+def monitor_enterprise_phones():
+    phones = [
+        {"dept": "销售部", "phone": "199****1001", "password": "123456"},
+        {"dept": "技术部", "phone": "199****1002", "password": "234567"},
+        {"dept": "市场部", "phone": "199****1003", "password": "345678"},
+    ]
+    
+    results = []
+    
+    for phone_info in phones:
+        try:
+            response = requests.post('https://199.deno.dev/api/bot', json={
+                "phonenum": phone_info["phone"],
+                "password": phone_info["password"],
+                "type": "basic"
+            })
+            
+            if response.json()["success"]:
+                data = response.json()["data"]
+                # 解析数据并添加到结果中
+                results.append({
+                    "部门": phone_info["dept"],
+                    "手机号": phone_info["phone"],
+                    "查询时间": datetime.now(),
+                    "状态": "成功",
+                    "详情": data
+                })
+            else:
+                results.append({
+                    "部门": phone_info["dept"],
+                    "手机号": phone_info["phone"],
+                    "查询时间": datetime.now(),
+                    "状态": "失败",
+                    "详情": response.json()["error"]
+                })
+                
+        except Exception as e:
+            results.append({
+                "部门": phone_info["dept"],
+                "手机号": phone_info["phone"],
+                "查询时间": datetime.now(),
+                "状态": "异常",
+                "详情": str(e)
+            })
+    
+    # 生成报告
+    df = pd.DataFrame(results)
+    df.to_excel(f"telecom_report_{datetime.now().strftime('%Y%m%d')}.xlsx", index=False)
+    print("✅ 企业监控报告已生成")
+
+if __name__ == "__main__":
+    monitor_enterprise_phones()
+```
+
+## ⚙️ 高级配置
+
+### 自定义缓存策略
 
 ```bash
-# 克隆仓库
-git clone https://github.com/your-username/199.git
-cd 199
-
-# 设置环境变量
-export TELECOM_PHONENUM="199****1016,138****5678"
-export TELECOM_PASSWORD="123456,234567"  
-export WEB_PASSWORD="admin123"
-
-# 启动开发服务器
-deno run --allow-all --watch main.ts
-
-# 或使用任务
-deno task dev
+# 设置不同的缓存时间
+CACHE_TIME=300    # 5分钟缓存
+CACHE_TIME=1800   # 30分钟缓存  
+CACHE_TIME=3600   # 1小时缓存
 ```
 
-## 📊 数据格式
-
-### 基础查询返回示例
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📱 电信套餐查询结果
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📱 手机号: 199****1016
-💰 账户余额: ¥25.68
-📞 语音通话: 100/1000 分钟 (10%)
-📶 总流量使用: 2.50/50.00 GB (5%)
-
-▶ 流量包详情:
-🇨🇳 国内流量: 2.50/20.00 GB (13%) [████░░░░░░]
-📺 专用流量: 0.00/30.00 GB (0%) [░░░░░░░░░░]
-
-查询时间: 2024-01-01 12:00:00
-天下之事，分久必合，合久必分 ----三国演义
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-### 增强查询返回示例
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📱 电信套餐查询结果 (增强版)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📱 手机号: 199****1016  💰 余额: ¥25.68 ✅
-📞 语音: 100/1000分钟 (10%) 📶 流量: 2.50/50.00GB (5%)
-
-▶ 流量使用详情:
-🇨🇳 国内流量: 2.50/20.00 GB (13%)
-   [████░░░░░░░░░░░░░░░░] 13%
-📺 专用流量: 0.00/30.00 GB (0%)  
-   [░░░░░░░░░░░░░░░░░░░░] 0%
-
-📊 使用统计分析:
-• 日均流量: 0.83 GB
-• 剩余天数: 25 天  
-• 使用趋势: 📊 正常
-• 预计月用量: 25.00 GB (在套餐范围内)
-
-💡 智能提醒: ✅ 一切正常，继续享受服务
-
-查询时间: 2024-01-01 12:00:00 (北京时间)
-诗云: 海内存知己，天涯若比邻 ----送杜少府之任蜀州
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-## 🔧 自定义配置
-
-### 修改缓存时间
+### 多API源配置
 
 ```bash
-# 设置为5分钟缓存（300秒）
-CACHE_TIME=300
+# 配置备用API源
+API_BASE=https://backup-api.example.com
 ```
 
-### 更改API后端
+### 安全增强配置
 
 ```bash
-# 使用自定义API地址
-API_BASE=https://your-custom-api.com
-```
+# 设置访问白名单
+WHITELIST_NUM=admin,special_user
 
-### 自定义密码
-
-```bash  
 # 设置强密码
-WEB_PASSWORD=your-secure-password-123
+WEB_PASSWORD=ComplexPassword123!
 ```
 
-## 🐛 故障排除
+### 钉钉机器人高级配置
+
+创建关键词型机器人：
+
+1. **创建机器人**
+   - 进入钉钉群 → 群设置 → 机器人 → 添加机器人
+   - 选择"自定义机器人"
+   - 设置关键词：`电信`、`套餐`、`流量`
+
+2. **获取Webhook**
+   ```
+   https://oapi.dingtalk.com/robot/send?access_token=YOUR_TOKEN
+   ```
+
+3. **配置环境变量**
+   ```bash
+   DINGTALK_WEBHOOK=https://oapi.dingtalk.com/robot/send?access_token=YOUR_TOKEN
+   ```
+
+### Telegram Bot 高级配置
+
+1. **创建Bot**
+   - 与 @BotFather 对话
+   - 发送 `/newbot`
+   - 获取 Bot Token
+
+2. **获取Chat ID**
+   ```bash
+   # 方法1：通过API获取
+   curl https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates
+   
+   # 方法2：添加 @userinfobot 到群组
+   ```
+
+3. **配置频道发送**
+   ```bash
+   TELEGRAM_BOT_TOKEN=1234567890:ABCDefGhiJklMnoPqrStUvWxYz
+   TELEGRAM_CHAT_ID=@your_channel  # 公开频道
+   # 或
+   TELEGRAM_CHAT_ID=-1001234567890  # 私有群组
+   ```
+
+### 性能优化配置
+
+```bash
+# 调整并发数
+MAX_CONCURRENT=5
+
+# 调整超时时间  
+REQUEST_TIMEOUT=30000
+
+# 启用压缩
+ENABLE_COMPRESSION=true
+```
+
+## 🔧 故障排除
 
 ### 常见问题
 
-1. **手机号格式错误**
-   - 确保手机号为11位有效号码
-   - 多个手机号用英文逗号分隔
+#### 1. 部署相关
 
-2. **密码验证失败**
-   - 检查密码是否为6位数字
-   - 手机号与密码数量要匹配
-
-3. **API调用失败**
-   - 确认手机号在配置列表中
-   - 检查POST请求格式是否正确
-
-4. **缓存问题**
-   - 使用 `?refresh=1` 强制刷新
-   - 或访问 `/clear-cache` 清空缓存
-
-### 调试模式
-
+**问题**：部署后访问404
 ```bash
-# 启动时查看详细日志
-deno run --allow-all main.ts
+# 检查入口文件设置
+✅ 确认入口文件为 main.ts
+✅ 检查GitHub仓库文件结构
+✅ 查看Deno Deploy构建日志
 ```
 
-## 📄 License
+**问题**：环境变量不生效
+```bash
+# 检查环境变量配置
+✅ 确认变量名拼写正确
+✅ 检查是否保存并重新部署
+✅ 通过 /status 端点验证配置
+```
 
-MIT License - 详见 [LICENSE](LICENSE) 文件
+#### 2. 查询相关
 
-## 🤝 贡献
+**问题**：手机号或密码错误
+```bash
+# 验证步骤
+1. 确认手机号为11位数字
+2. 确认密码为6位数字  
+3. 手机号与密码数量一一对应
+4. 测试登录电信官网验证
+```
 
-欢迎提交 Issue 和 Pull Request！
+**问题**：查询超时或失败
+```bash
+# 排查步骤
+1. 检查网络连接
+2. 尝试强制刷新 (?refresh=1)
+3. 清除缓存 (/clear-cache)
+4. 检查API源状态
+```
+
+#### 3. 通知相关
+
+**问题**：钉钉通知发送失败
+```bash
+# 检查项目
+✅ Webhook地址是否正确
+✅ 关键词是否设置并匹配
+✅ 群机器人是否被移除
+✅ 消息内容是否符合格式要求
+```
+
+**问题**：Telegram通知发送失败
+```bash
+# 检查项目
+✅ Bot Token是否有效
+✅ Chat ID是否正确
+✅ Bot是否被添加到群组/频道
+✅ Bot是否有发送权限
+```
+
+#### 4. 性能相关
+
+**问题**：响应缓慢
+```bash
+# 优化建议
+1. 启用缓存（默认已启用）
+2. 减少并发查询数量
+3. 使用compact格式减少数据量
+4. 选择距离较近的API源
+```
+
+### 调试工具
+
+#### 1. 状态检查
+```bash
+curl https://your-domain.deno.dev/status
+```
+
+#### 2. 缓存管理
+```bash
+# 清除所有缓存
+curl -X POST https://your-domain.deno.dev/clear-cache
+
+# 强制刷新查询
+curl "https://your-domain.deno.dev/query?refresh=1"
+```
+
+#### 3. 日志查看
+```bash
+# Deno Deploy控制台查看实时日志
+# 关注以下关键词：
+# - ❌ 错误标识  
+# - ⚠️ 警告标识
+# - ✅ 成功标识
+```
+
+### 联系支持
+
+如果遇到无法解决的问题：
+
+1. **GitHub Issues** - [提交问题](https://github.com/your-username/telecom-formatter/issues)
+2. **功能建议** - [提交建议](https://github.com/your-username/telecom-formatter/discussions)
+3. **安全问题** - 发送邮件到安全邮箱
 
 ---
 
-**⭐ 如果这个项目对你有帮助，请给个星标支持！** 
+## 📄 许可证
+
+本项目基于 MIT 许可证开源 - 查看 [LICENSE](LICENSE) 文件了解详情
+
+## 🤝 贡献
+
+欢迎提交 Pull Request 和 Issue！
+
+1. Fork 本项目
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+## ⭐ Star History
+
+如果这个项目对您有帮助，请考虑给一个 Star ⭐
+
+---
+
+<div align="center">
+
+**[⬆ 返回顶部](#电信套餐查询格式化服务-v20)**
+
+Made with ❤️ by [Your Name](https://github.com/your-username)
+
+</div> 
