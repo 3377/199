@@ -65,7 +65,7 @@ try {
 }
 
 // 主要查询处理函数
-async function handleQuery(enhanced: boolean = false, forceRefresh: boolean = false, phonenum?: string): Promise<ApiResponse> {
+async function handleQuery(enhanced: boolean = false, forceRefresh: boolean = false, phonenum?: string): Promise<ApiResponse & { queryTimestamp?: number }> {
   try {
     // 确定要查询的手机号
     const targetPhone = phonenum || multiConfig.defaultUser;
@@ -82,20 +82,21 @@ async function handleQuery(enhanced: boolean = false, forceRefresh: boolean = fa
     
     const cacheManager = await getCacheManager();
     
-    // 区分缓存键：基础查询和增强查询使用不同缓存
+    // 修复缓存键：直接传递组合键给缓存管理器
     const cacheKey = enhanced ? `${targetPhone}:enhanced` : `${targetPhone}:basic`;
     
     // 检查是否强制刷新
     if (!forceRefresh) {
-      // 尝试从缓存获取数据
-      const cachedData = await cacheManager.get(cacheKey);
+      // 尝试从缓存获取数据 - 使用新的get方法
+      const cachedData = await cacheManager.getWithCustomKey(cacheKey);
       if (cachedData && cachedData.formattedText) {
         console.log(`📦 使用${enhanced ? '增强' : '基础'}查询缓存数据 (${maskPhoneNumber(targetPhone)})`);
         return {
           success: true,
           data: cachedData.formattedText,
           cached: true,
-          phonenum: targetPhone
+          phonenum: targetPhone,
+          queryTimestamp: cachedData.timestamp // 使用缓存的时间戳
         };
       }
     } else {
@@ -107,6 +108,7 @@ async function handleQuery(enhanced: boolean = false, forceRefresh: boolean = fa
     // 根据查询类型获取不同数据
     let formattedText: string;
     let cacheData: any;
+    const queryTimestamp = Date.now(); // 记录实际查询时间
     
     if (enhanced) {
       // 增强查询：获取完整数据
@@ -125,7 +127,8 @@ async function handleQuery(enhanced: boolean = false, forceRefresh: boolean = fa
         importantData: fullData.importantData,
         shareUsage: fullData.shareUsage,
         formattedText,
-        queryType: 'enhanced'
+        queryType: 'enhanced',
+        timestamp: queryTimestamp
       };
     } else {
       // 基础查询：仅获取核心数据
@@ -137,13 +140,14 @@ async function handleQuery(enhanced: boolean = false, forceRefresh: boolean = fa
         summary: basicData.summary,
         fluxPackage: basicData.fluxPackage,
         formattedText,
-        queryType: 'basic'
+        queryType: 'basic',
+        timestamp: queryTimestamp
       };
     }
     
     // 保存到对应的缓存键
     try {
-      await cacheManager.set(cacheKey, cacheData);
+      await cacheManager.setWithCustomKey(cacheKey, cacheData);
       console.log(`💾 ${enhanced ? '增强' : '基础'}查询数据已缓存`);
     } catch (cacheError) {
       console.warn('⚠️ 保存缓存失败:', cacheError);
@@ -153,7 +157,8 @@ async function handleQuery(enhanced: boolean = false, forceRefresh: boolean = fa
       success: true,
       data: formattedText,
       cached: false,
-      phonenum: targetPhone
+      phonenum: targetPhone,
+      queryTimestamp: queryTimestamp // 返回实际查询时间戳
     };
   } catch (error) {
     console.error('❌ 查询处理失败:', error);
@@ -185,7 +190,7 @@ async function handleJsonQuery(phonenum?: string): Promise<ApiResponse> {
     const cacheManager = await getCacheManager();
     
     // JSON查询优先使用增强查询缓存，包含完整数据
-    let cachedData = await cacheManager.get(`${targetPhone}:enhanced`);
+    let cachedData = await cacheManager.getWithCustomKey(`${targetPhone}:enhanced`);
     
     if (cachedData) {
       console.log(`📦 使用增强查询缓存JSON数据 (${maskPhoneNumber(targetPhone)})`);
@@ -206,7 +211,7 @@ async function handleJsonQuery(phonenum?: string): Promise<ApiResponse> {
     }
     
     // 如果没有增强查询缓存，尝试基础查询缓存
-    cachedData = await cacheManager.get(`${targetPhone}:basic`);
+    cachedData = await cacheManager.getWithCustomKey(`${targetPhone}:basic`);
     if (cachedData) {
       console.log(`📦 使用基础查询缓存JSON数据 (${maskPhoneNumber(targetPhone)})`);
       const jsonData = {
@@ -948,7 +953,7 @@ async function handleRequest(request: Request): Promise<Response> {
     if (url.pathname === '/' && method === 'GET') {
       const result = await handleQuery(false, false, phoneParam || undefined);
       const content = result.success ? result.data as string : `❌ 查询失败: ${result.error}`;
-      const queryTimestamp = result.success ? Date.now() : undefined;
+      const queryTimestamp = result.success ? (result as any).queryTimestamp : undefined;
       const html = generateMainPage(content, '电信套餐查询', multiConfig.users, phoneParam || multiConfig.defaultUser, multiConfig.cacheTime, queryTimestamp);
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
@@ -956,7 +961,7 @@ async function handleRequest(request: Request): Promise<Response> {
     if (url.pathname === '/query' && method === 'GET') {
       const result = await handleQuery(false, forceRefresh, phoneParam || undefined);
       const content = result.success ? result.data as string : `❌ 查询失败: ${result.error}`;
-      const queryTimestamp = result.success ? Date.now() : undefined;
+      const queryTimestamp = result.success ? (result as any).queryTimestamp : undefined;
       const html = generateMainPage(content, '基础查询结果', multiConfig.users, phoneParam || multiConfig.defaultUser, multiConfig.cacheTime, queryTimestamp);
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
@@ -964,7 +969,7 @@ async function handleRequest(request: Request): Promise<Response> {
     if (url.pathname === '/enhanced' && method === 'GET') {
       const result = await handleQuery(true, forceRefresh, phoneParam || undefined);
       const content = result.success ? result.data as string : `❌ 查询失败: ${result.error}`;
-      const queryTimestamp = result.success ? Date.now() : undefined;
+      const queryTimestamp = result.success ? (result as any).queryTimestamp : undefined;
       const html = generateMainPage(content, '增强查询结果', multiConfig.users, phoneParam || multiConfig.defaultUser, multiConfig.cacheTime, queryTimestamp);
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }

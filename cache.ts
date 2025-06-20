@@ -193,6 +193,62 @@ export class CacheManager {
       latency
     };
   }
+  
+  // 获取缓存数据 - 支持自定义键
+  async getWithCustomKey(cacheKey: string): Promise<any | null> {
+    try {
+      const result = await this.kv.get([`${this.cachePrefix}${cacheKey}`]);
+      if (!result.value) {
+        return null;
+      }
+      
+      const cachedData = result.value;
+      
+      // 检查缓存是否过期（默认120秒，更实时）
+      const now = Date.now();
+      const cacheAge = now - cachedData.timestamp;
+      const maxAgeSeconds = parseInt(globalThis.Deno?.env?.get?.('CACHE_TIME') || '120'); // 默认120秒
+      const maxAge = maxAgeSeconds * 1000; // 转换为毫秒
+      
+      if (cacheAge > maxAge) {
+        console.log(`缓存已过期，年龄: ${Math.floor(cacheAge / 1000)}秒，最大年龄: ${maxAgeSeconds}秒`);
+        await this.deleteWithCustomKey(cacheKey);
+        return null;
+      }
+      
+      console.log(`✅ 使用缓存数据，剩余有效期: ${Math.floor((maxAge - cacheAge) / 1000)}秒`);
+      return cachedData;
+    } catch (error) {
+      console.error('❌ 获取缓存失败:', error);
+      return null;
+    }
+  }
+  
+  // 设置缓存数据 - 支持自定义键
+  async setWithCustomKey(cacheKey: string, data: any): Promise<void> {
+    try {
+      const cachedData = {
+        ...data,
+        timestamp: data.timestamp || Date.now()
+      };
+      
+      await this.kv.set([`${this.cachePrefix}${cacheKey}`], cachedData);
+      console.log('✅ 缓存数据已保存');
+    } catch (error) {
+      console.error('❌ 保存缓存失败:', error);
+      throw error;
+    }
+  }
+  
+  // 删除缓存数据 - 支持自定义键
+  async deleteWithCustomKey(cacheKey: string): Promise<void> {
+    try {
+      await this.kv.delete([`${this.cachePrefix}${cacheKey}`]);
+      console.log('🗑️ 缓存数据已删除');
+    } catch (error) {
+      console.error('❌ 删除缓存失败:', error);
+    }
+  }
 }
 
 // 全局缓存管理器实例
