@@ -581,26 +581,13 @@ async function handleBotQuery(request: Request): Promise<ApiResponse> {
       };
     }
     
-    // 验证手机号和密码是否在配置中
-    const userConfig = multiConfig.users.find(user => user.phonenum === phonenum);
-    if (!userConfig || userConfig.password !== password) {
-      return {
-        success: false,
-        error: '手机号或密码错误',
-        cached: false,
-        phonenum: maskPhoneNumber(phonenum)
-      };
-    }
-    
-    const telecomClient = telecomClients.get(phonenum);
-    if (!telecomClient) {
-      return {
-        success: false,
-        error: `未找到手机号 ${maskPhoneNumber(phonenum)} 的配置`,
-        cached: false,
-        phonenum: phonenum
-      };
-    }
+    // 为机器人API创建临时客户端（不需要预配置）
+    const telecomClient = new EnhancedTelecomClient({
+      phonenum: phonenum,
+      password: password,
+      apiBase: multiConfig.apiBase,
+      cacheTime: multiConfig.cacheTime
+    });
     
     // 根据类型生成不同的机器人数据
     let formattedText: string;
@@ -657,19 +644,50 @@ async function handlePostQuery(request: Request): Promise<ApiResponse> {
       };
     }
     
-    // 验证手机号和密码是否在配置中
-    const userConfig = multiConfig.users.find(user => user.phonenum === phonenum);
-    if (!userConfig || userConfig.password !== password) {
+    // 为POST查询创建临时客户端（不需要预配置）
+    const telecomClient = new EnhancedTelecomClient({
+      phonenum: phonenum,
+      password: password,
+      apiBase: multiConfig.apiBase,
+      cacheTime: multiConfig.cacheTime
+    });
+    
+    // 直接获取数据并格式化
+    try {
+      let formattedText: string;
+      const queryTimestamp = Date.now();
+      
+      if (enhanced) {
+        // 增强查询：获取完整数据
+        const fullData = await telecomClient.getFullData();
+        formattedText = formatter.formatEnhancedTelecomData(
+          fullData.summary, 
+          fullData.fluxPackage,
+          fullData.importantData,
+          fullData.shareUsage
+        );
+      } else {
+        // 基础查询：获取核心数据 + 详细信息汇总
+        const basicData = await telecomClient.getBasicData();
+        const importantData = await telecomClient.getImportantData();
+        formattedText = formatter.formatBasicSummary(basicData.summary, basicData.fluxPackage, importantData || undefined);
+      }
+      
+      return {
+        success: true,
+        data: formattedText,
+        cached: false,
+        phonenum: maskPhoneNumber(phonenum),
+        timestamp: new Date().toISOString()
+      };
+    } catch (clientError) {
       return {
         success: false,
-        error: '手机号或密码错误',
+        error: `查询失败: ${clientError.message}`,
         cached: false,
         phonenum: maskPhoneNumber(phonenum)
       };
     }
-    
-    // 使用现有的查询逻辑
-    return await handleQuery(enhanced, false, phonenum);
     
   } catch (error) {
     console.error('❌ POST查询处理失败:', error);
