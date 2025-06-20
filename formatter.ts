@@ -18,7 +18,10 @@ import {
   getUsageReminder,
   createSeparator,
   formatLargeNumber,
-  maskPhoneNumber
+  maskPhoneNumber,
+  formatPackageDate,
+  getPackageStatus,
+  formatTimeDiff
 } from './utils.ts';
 
 /**
@@ -106,43 +109,126 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
     let result = '';
     let totalPackages = 0;
     let activePackages = 0;
+    let expiredPackages = 0;
+    let soonExpirePackages = 0;
     
+    // 收集所有流量包信息用于排序
+    const allPackages: Array<{
+      group: string;
+      icon: string;
+      product: any;
+      expireDays?: number;
+    }> = [];
+    
+    // 收集所有流量包
     for (const packageGroup of packages) {
       const packageIcon = getFlowPackageIcon(packageGroup.title);
-      result += `\n${packageIcon} ${packageGroup.title}\n`;
       
       for (const product of packageGroup.productInfos) {
-        totalPackages++;
+        const packageStatus = getPackageStatus(product.expireDate);
+        allPackages.push({
+          group: packageGroup.title,
+          icon: packageIcon,
+          product,
+          expireDays: packageStatus.days
+        });
+      }
+    }
+    
+    // 按到期时间排序（即将到期的在前）
+    allPackages.sort((a, b) => {
+      if (a.expireDays === null && b.expireDays === null) return 0;
+      if (a.expireDays === null) return 1;
+      if (b.expireDays === null) return -1;
+      return (a.expireDays || 0) - (b.expireDays || 0);
+    });
+    
+    let currentGroup = '';
+    
+    for (const item of allPackages) {
+      const { group, icon, product } = item;
+      totalPackages++;
+      
+      // 显示分组标题
+      if (currentGroup !== group) {
+        currentGroup = group;
+        result += `\n${icon} ${group}\n`;
+      }
+      
+      // 获取流量包状态信息
+      const packageStatus = getPackageStatus(product.expireDate);
+      const statusInfo = packageStatus.days !== undefined ? ` ${formatTimeDiff(packageStatus.days)}` : '';
+      
+      // 统计各类流量包
+      if (packageStatus.status === '已过期') {
+        expiredPackages++;
+      } else if (packageStatus.status === '即将到期') {
+        soonExpirePackages++;
+      }
+      
+      if (product.infiniteTitle) {
+        // 无限流量包
+        result += `  🔹 [${product.title}] ${product.infiniteTitle}${product.infiniteValue}${product.infiniteUnit}/无限\n`;
+        result += `      ${packageStatus.icon} ${packageStatus.status}${statusInfo}\n`;
         
-        if (product.infiniteTitle) {
-          // 无限流量包
-          result += `  🔹 [${product.title}] ${product.infiniteTitle}${product.infiniteValue}${product.infiniteUnit}/无限\n`;
-          activePackages++;
-        } else if (product.leftTitle && product.leftHighlight && product.rightCommon) {
-          // 普通流量包 - 解析使用量和总量
-          const usageMatch = product.leftHighlight.match(/(\d+(?:\.\d+)?)(KB|MB|GB)/);
-          const totalMatch = product.rightCommon.match(/(\d+(?:\.\d+)?)(KB|MB|GB)/);
+        // 显示时间信息（如果有）
+        if (product.orderTime || product.effectDate || product.expireDate) {
+          result += `      📅 `;
+          if (product.orderTime) result += `订购：${formatPackageDate(product.orderTime)} `;
+          if (product.effectDate) result += `生效：${formatPackageDate(product.effectDate)} `;
+          if (product.expireDate) result += `到期：${formatPackageDate(product.expireDate)}`;
+          result += `\n`;
+        }
+        
+        activePackages++;
+      } else if (product.leftTitle && product.leftHighlight && product.rightCommon) {
+        // 普通流量包 - 解析使用量和总量
+        const usageMatch = product.leftHighlight.match(/(\d+(?:\.\d+)?)(KB|MB|GB)/);
+        const totalMatch = product.rightCommon.match(/(\d+(?:\.\d+)?)(KB|MB|GB)/);
+        
+        if (usageMatch && totalMatch) {
+          // 转换为KB进行计算
+          const usageKB = this.convertToKB(parseFloat(usageMatch[1]), usageMatch[2]);
+          const totalKB = this.convertToKB(parseFloat(totalMatch[1]), totalMatch[2]);
+          const percent = calculatePercentage(usageKB, totalKB);
+          const progress = createSimpleProgressBar(usageKB, totalKB, 8);
           
-          if (usageMatch && totalMatch) {
-            // 转换为KB进行计算
-            const usageKB = this.convertToKB(parseFloat(usageMatch[1]), usageMatch[2]);
-            const totalKB = this.convertToKB(parseFloat(totalMatch[1]), totalMatch[2]);
-            const percent = calculatePercentage(usageKB, totalKB);
-            const progress = createSimpleProgressBar(usageKB, totalKB, 8);
-            
-            result += `  🔹 [${product.title}] ${product.leftTitle}${product.leftHighlight}/${product.rightCommon}\n`;
-            result += `      [${progress}] ${percent.toFixed(1)}% 已使用\n`;
-            
-            if (usageKB > 0) activePackages++;
-          } else {
-            result += `  🔹 [${product.title}] ${product.leftTitle}${product.leftHighlight}/${product.rightCommon}\n`;
+          result += `  🔹 [${product.title}] ${product.leftTitle}${product.leftHighlight}/${product.rightCommon}\n`;
+          result += `      [${progress}] ${percent.toFixed(1)}% 已使用\n`;
+          result += `      ${packageStatus.icon} ${packageStatus.status}${statusInfo}\n`;
+          
+          // 显示时间信息（如果有）
+          if (product.orderTime || product.effectDate || product.expireDate) {
+            result += `      📅 `;
+            if (product.orderTime) result += `订购：${formatPackageDate(product.orderTime)} `;
+            if (product.effectDate) result += `生效：${formatPackageDate(product.effectDate)} `;
+            if (product.expireDate) result += `到期：${formatPackageDate(product.expireDate)}`;
+            result += `\n`;
+          }
+          
+          if (usageKB > 0 && packageStatus.status !== '已过期') activePackages++;
+        } else {
+          result += `  🔹 [${product.title}] ${product.leftTitle}${product.leftHighlight}/${product.rightCommon}\n`;
+          result += `      ${packageStatus.icon} ${packageStatus.status}${statusInfo}\n`;
+          
+          // 显示时间信息（如果有）
+          if (product.orderTime || product.effectDate || product.expireDate) {
+            result += `      📅 `;
+            if (product.orderTime) result += `订购：${formatPackageDate(product.orderTime)} `;
+            if (product.effectDate) result += `生效：${formatPackageDate(product.effectDate)} `;
+            if (product.expireDate) result += `到期：${formatPackageDate(product.expireDate)}`;
+            result += `\n`;
           }
         }
       }
     }
     
-    // 添加流量包统计
-    result += `\n📦 流量包统计：共${totalPackages}个，活跃${activePackages}个\n`;
+    // 添加增强的流量包统计
+    result += `\n📦 流量包统计：共${totalPackages}个`;
+    result += ` | ✅ 活跃${activePackages}个`;
+    if (soonExpirePackages > 0) result += ` | ⚠️ 即将到期${soonExpirePackages}个`;
+    if (expiredPackages > 0) result += ` | ❌ 已过期${expiredPackages}个`;
+    result += `\n`;
     
     return result.trim();
   }

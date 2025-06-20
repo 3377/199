@@ -99,7 +99,7 @@ export class ConfigManager {
       users,
       defaultUser: phoneNumbers[0],
       apiBase: config.apiBase || 'https://dx.ll.sd',
-      cacheTime: config.cacheTime || 2,
+      cacheTime: config.cacheTime || 120, // 默认120秒
       webPassword: config.webPassword
     };
   }
@@ -136,7 +136,7 @@ export class ConfigManager {
       users,
       defaultUser: phoneList[0],
       apiBase: this.getEnv('API_BASE') || 'https://dx.ll.sd',
-      cacheTime: parseInt(this.getEnv('CACHE_TIME') || '2'),
+      cacheTime: parseInt(this.getEnv('CACHE_TIME') || '120'), // 默认120秒
       webPassword: this.getEnv('WEB_PASSWORD')
     };
   }

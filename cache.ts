@@ -26,13 +26,14 @@ export class CacheManager {
       
       const cachedData = result.value as CachedData;
       
-      // 检查缓存是否过期（默认2分钟，更实时）
+      // 检查缓存是否过期（默认120秒，更实时）
       const now = Date.now();
       const cacheAge = now - cachedData.timestamp;
-      const maxAge = parseInt(globalThis.Deno?.env?.get?.('CACHE_TIME') || '120000'); // 2分钟
+      const maxAgeSeconds = parseInt(globalThis.Deno?.env?.get?.('CACHE_TIME') || '120'); // 默认120秒
+      const maxAge = maxAgeSeconds * 1000; // 转换为毫秒
       
       if (cacheAge > maxAge) {
-        console.log(`缓存已过期，年龄: ${Math.floor(cacheAge / 1000)}秒，最大年龄: ${Math.floor(maxAge / 1000)}秒`);
+        console.log(`缓存已过期，年龄: ${Math.floor(cacheAge / 1000)}秒，最大年龄: ${maxAgeSeconds}秒`);
         await this.delete(phonenum);
         return null;
       }
@@ -74,18 +75,18 @@ export class CacheManager {
   // 清空所有缓存
   async clear(): Promise<void> {
     try {
-      const iterator = this.kv.list({ prefix: [this.cachePrefix] as any });
-      const keys = [];
+      const iterator = this.kv.list({ prefix: [this.cachePrefix] });
+      const keys: any[] = [];
       for await (const { key } of iterator) {
         keys.push(key);
       }
       
-              if (keys.length > 0) {
-          const tx = this.kv.atomic();
-          for (const key of keys) {
-            tx.delete(key as any);
-          }
-          await tx.commit();
+      if (keys.length > 0) {
+        const tx = this.kv.atomic();
+        for (const key of keys) {
+          tx.delete(key);
+        }
+        await tx.commit();
         console.log(`🗑️ 已清空 ${keys.length} 个缓存条目`);
       } else {
         console.log('📭 没有需要清空的缓存');

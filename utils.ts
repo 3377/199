@@ -166,6 +166,74 @@ export function getBeijingTime(): string {
   return beijingTime.toISOString().slice(0, 19).replace('T', ' ');
 }
 
+// 格式化日期字符串为可读格式
+export function formatPackageDate(dateStr?: string): string {
+  if (!dateStr) return '未知';
+  
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
+      // 尝试解析不同格式的日期字符串
+      const cleanDateStr = dateStr.replace(/[^\d-]/g, '').slice(0, 10);
+      const parsedDate = new Date(cleanDateStr);
+      if (isNaN(parsedDate.getTime())) {
+        return dateStr; // 如果无法解析，返回原字符串
+      }
+      return parsedDate.toLocaleDateString('zh-CN');
+    }
+    return date.toLocaleDateString('zh-CN');
+  } catch {
+    return dateStr;
+  }
+}
+
+// 计算到期剩余天数
+export function calculateExpireDays(expireDate?: string): number | null {
+  if (!expireDate) return null;
+  
+  try {
+    const expire = new Date(expireDate);
+    const now = new Date();
+    const diffTime = expire.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  } catch {
+    return null;
+  }
+}
+
+// 获取流量包状态
+export function getPackageStatus(expireDate?: string): { status: string; icon: string; days?: number } {
+  const remainingDays = calculateExpireDays(expireDate);
+  
+  if (remainingDays === null) {
+    return { status: '未知', icon: '❓' };
+  }
+  
+  if (remainingDays < 0) {
+    return { status: '已过期', icon: '❌', days: remainingDays };
+  } else if (remainingDays <= 3) {
+    return { status: '即将到期', icon: '⚠️', days: remainingDays };
+  } else if (remainingDays <= 7) {
+    return { status: '即将到期', icon: '🟡', days: remainingDays };
+  } else {
+    return { status: '正常', icon: '✅', days: remainingDays };
+  }
+}
+
+// 格式化时间差显示
+export function formatTimeDiff(days: number): string {
+  if (days < 0) {
+    return `已过期${Math.abs(days)}天`;
+  } else if (days === 0) {
+    return '今日到期';
+  } else if (days === 1) {
+    return '明日到期';
+  } else {
+    return `${days}天后到期`;
+  }
+}
+
 // 生成随机诗句和格言
 export function getRandomPoetry(): string {
   const poems = [

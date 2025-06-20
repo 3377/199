@@ -47,6 +47,10 @@ export interface FluxPackageItem {
   infiniteTitle?: string;     // 无限流量标题
   infiniteValue?: string;     // 无限流量值
   infiniteUnit?: string;      // 无限流量单位
+  effectDate?: string;        // 生效日期
+  expireDate?: string;        // 过期日期
+  orderTime?: string;         // 订购时间
+  packageStatus?: string;     // 套餐状态
 }
 
 // 重要数据详情
