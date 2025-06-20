@@ -82,12 +82,15 @@ async function handleQuery(enhanced: boolean = false, forceRefresh: boolean = fa
     
     const cacheManager = await getCacheManager();
     
+    // 区分缓存键：基础查询和增强查询使用不同缓存
+    const cacheKey = enhanced ? `${targetPhone}:enhanced` : `${targetPhone}:basic`;
+    
     // 检查是否强制刷新
     if (!forceRefresh) {
       // 尝试从缓存获取数据
-      const cachedData = await cacheManager.get(targetPhone);
+      const cachedData = await cacheManager.get(cacheKey);
       if (cachedData && cachedData.formattedText) {
-        console.log(`📦 使用缓存数据 (${maskPhoneNumber(targetPhone)})`);
+        console.log(`📦 使用${enhanced ? '增强' : '基础'}查询缓存数据 (${maskPhoneNumber(targetPhone)})`);
         return {
           success: true,
           data: cachedData.formattedText,
@@ -96,33 +99,52 @@ async function handleQuery(enhanced: boolean = false, forceRefresh: boolean = fa
         };
       }
     } else {
-      console.log(`🔄 强制刷新 (${maskPhoneNumber(targetPhone)})`);
+      console.log(`🔄 强制刷新${enhanced ? '增强' : '基础'}查询 (${maskPhoneNumber(targetPhone)})`);
     }
     
-    console.log(`🔍 缓存未命中，从API获取新数据 (${maskPhoneNumber(targetPhone)})`);
+    console.log(`🔍 ${enhanced ? '增强' : '基础'}查询缓存未命中，从API获取新数据 (${maskPhoneNumber(targetPhone)})`);
     
-    // 获取新数据
-    const fullData = await telecomClient.getFullData();
+    // 根据查询类型获取不同数据
+    let formattedText: string;
+    let cacheData: any;
     
-    // 格式化数据
-    const formattedText = enhanced 
-      ? formatter.formatEnhancedTelecomData(
-          fullData.summary, 
-          fullData.fluxPackage,
-          fullData.importantData,
-          fullData.shareUsage
-        )
-      : formatter.formatTelecomData(fullData.summary, fullData.fluxPackage);
-    
-    // 保存到缓存
-    try {
-      await cacheManager.set(targetPhone, {
+    if (enhanced) {
+      // 增强查询：获取完整数据
+      const fullData = await telecomClient.getFullData();
+      
+      formattedText = formatter.formatEnhancedTelecomData(
+        fullData.summary, 
+        fullData.fluxPackage,
+        fullData.importantData,
+        fullData.shareUsage
+      );
+      
+      cacheData = {
         summary: fullData.summary,
         fluxPackage: fullData.fluxPackage,
         importantData: fullData.importantData,
         shareUsage: fullData.shareUsage,
-        formattedText
-      });
+        formattedText,
+        queryType: 'enhanced'
+      };
+    } else {
+      // 基础查询：仅获取核心数据
+      const basicData = await telecomClient.getBasicData();
+      
+      formattedText = formatter.formatTelecomData(basicData.summary, basicData.fluxPackage);
+      
+      cacheData = {
+        summary: basicData.summary,
+        fluxPackage: basicData.fluxPackage,
+        formattedText,
+        queryType: 'basic'
+      };
+    }
+    
+    // 保存到对应的缓存键
+    try {
+      await cacheManager.set(cacheKey, cacheData);
+      console.log(`💾 ${enhanced ? '增强' : '基础'}查询数据已缓存`);
     } catch (cacheError) {
       console.warn('⚠️ 保存缓存失败:', cacheError);
     }
@@ -162,16 +184,36 @@ async function handleJsonQuery(phonenum?: string): Promise<ApiResponse> {
     
     const cacheManager = await getCacheManager();
     
-    // 尝试从缓存获取数据
-    const cachedData = await cacheManager.get(targetPhone);
+    // JSON查询优先使用增强查询缓存，包含完整数据
+    let cachedData = await cacheManager.get(`${targetPhone}:enhanced`);
+    
     if (cachedData) {
-      console.log(`📦 使用缓存JSON数据 (${maskPhoneNumber(targetPhone)})`);
+      console.log(`📦 使用增强查询缓存JSON数据 (${maskPhoneNumber(targetPhone)})`);
       const jsonData = {
         summary: cachedData.summary,
         fluxPackage: cachedData.fluxPackage,
         importantData: cachedData.importantData,
         shareUsage: cachedData.shareUsage,
-        timestamp: cachedData.timestamp
+        timestamp: cachedData.timestamp,
+        dataSource: 'enhanced_cache'
+      };
+      return {
+        success: true,
+        data: jsonData,
+        cached: true,
+        phonenum: targetPhone
+      };
+    }
+    
+    // 如果没有增强查询缓存，尝试基础查询缓存
+    cachedData = await cacheManager.get(`${targetPhone}:basic`);
+    if (cachedData) {
+      console.log(`📦 使用基础查询缓存JSON数据 (${maskPhoneNumber(targetPhone)})`);
+      const jsonData = {
+        summary: cachedData.summary,
+        fluxPackage: cachedData.fluxPackage,
+        timestamp: cachedData.timestamp,
+        dataSource: 'basic_cache'
       };
       return {
         success: true,
@@ -183,7 +225,7 @@ async function handleJsonQuery(phonenum?: string): Promise<ApiResponse> {
     
     console.log(`🔍 缓存未命中，从API获取新JSON数据 (${maskPhoneNumber(targetPhone)})`);
     
-    // 获取新数据
+    // 获取完整数据用于JSON显示
     const fullData = await telecomClient.getFullData();
     
     const jsonData = {
@@ -191,7 +233,8 @@ async function handleJsonQuery(phonenum?: string): Promise<ApiResponse> {
       fluxPackage: fullData.fluxPackage,
       importantData: fullData.importantData,
       shareUsage: fullData.shareUsage,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      dataSource: 'api_fresh'
     };
     
     return {
@@ -282,9 +325,11 @@ async function handleClearCache(): Promise<ApiResponse> {
     const cacheManager = await getCacheManager();
     await cacheManager.clear();
     
+    console.log('🗑️ 已清除所有缓存（包括基础查询和增强查询缓存）');
+    
     return {
       success: true,
-      data: '✅ 缓存已清除',
+      data: '✅ 缓存已清除（基础查询缓存 + 增强查询缓存）',
       cached: false
     };
   } catch (error) {

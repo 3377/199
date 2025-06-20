@@ -185,6 +185,56 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
     return result;
   }
   
+  // 格式化账户详细信息
+  private formatImportantData(importantData?: ImportantData): string {
+    if (!importantData?.responseData?.data) {
+      return '';
+    }
+    
+    let result = '\n📋 账户详细信息\n';
+    const data = importantData.responseData.data;
+    
+    // 会员信息
+    if (data.memberInfo) {
+      result += `\n👤 会员信息\n`;
+      if (data.memberInfo.memberName) {
+        result += `  📝 会员名称：${data.memberInfo.memberName}\n`;
+      }
+      if (data.memberInfo.memberGrade) {
+        result += `  ⭐ 会员等级：${data.memberInfo.memberGrade}\n`;
+      }
+    }
+    
+    // 账户信息
+    if (data.accountInfo) {
+      result += `\n🏦 账户信息\n`;
+      if (data.accountInfo.accountStatus) {
+        result += `  📊 账户状态：${data.accountInfo.accountStatus}\n`;
+      }
+      if (data.accountInfo.creditLevel) {
+        result += `  💳 信用等级：${data.accountInfo.creditLevel}\n`;
+      }
+    }
+    
+    // 余额信息
+    if (data.balanceInfo) {
+      result += `\n💰 余额信息\n`;
+      if (data.balanceInfo.realBalance !== undefined) {
+        result += `  💵 实际余额：¥${(data.balanceInfo.realBalance / 100).toFixed(2)}\n`;
+      }
+      if (data.balanceInfo.creditBalance !== undefined) {
+        result += `  🏧 信用额度：¥${(data.balanceInfo.creditBalance / 100).toFixed(2)}\n`;
+      }
+    }
+    
+    // 如果没有任何有效信息，返回空字符串
+    if (result === '\n📋 账户详细信息\n') {
+      return '';
+    }
+    
+    return result;
+  }
+  
   // 主格式化方法（增强版）
   public formatEnhancedTelecomData(
     summary: SummaryData, 
@@ -194,26 +244,37 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
   ): string {
     const stats = this.calculateUsageStats(summary);
     
-    const title = '【✨ 电信套餐用量监控 ✨】';
-    const separator = createSeparator('═', 40);
+    const title = '【✨ 电信套餐用量监控（增强版）✨】';
+    const separator = createSeparator('═', 45);
     const basicInfo = this.formatEnhancedBasicInfo(summary, stats);
     const fluxDetails = this.formatEnhancedFluxPackageDetails(fluxPackage);
+    const importantInfo = this.formatImportantData(importantData);
     const shareInfo = this.formatShareUsage(shareUsage);
     const queryTime = `⏰ 查询时间：${formatTimestamp(summary.createTime)}`;
     const reminder = `💡 温馨提示：${getUsageReminder(stats.balanceStatus, stats.flowTrend, stats.remainingDays)}`;
     const poetry = `📜 ${getRandomPoetry()}`;
     
+    // 数据来源标识
+    const dataSource = `📊 数据来源：${importantData ? '完整API数据' : '基础API数据'}${shareUsage ? ' + 共享套餐数据' : ''}`;
+    
     let result = `${title}\n${separator}\n\n${basicInfo}`;
     
+    // 套餐详细信息（增强查询独有）
+    if (importantInfo) {
+      result += `\n\n${separator}${importantInfo}`;
+    }
+    
+    // 流量包明细
     if (fluxDetails && !fluxDetails.includes('❌')) {
       result += `\n\n${separator}\n【📦 流量包明细】\n${fluxDetails}`;
     }
     
+    // 共享套餐信息
     if (shareInfo) {
       result += `\n\n${separator}${shareInfo}`;
     }
     
-    result += `\n\n${separator}\n${queryTime}\n${reminder}\n\n${poetry}\n${separator}`;
+    result += `\n\n${separator}\n${dataSource}\n${queryTime}\n${reminder}\n\n${poetry}\n${separator}`;
     
     return result;
   }
