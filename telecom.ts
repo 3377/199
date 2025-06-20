@@ -37,11 +37,13 @@ export class EnhancedTelecomClient {
     }
   }
   
-  // 调用userFluxPackage接口获取流量包信息
-  async getFluxPackage(): Promise<FluxPackageData> {
+  // 调用userFluxPackage接口获取流量包信息（带重试机制）
+  async getFluxPackage(retryCount: number = 0): Promise<FluxPackageData> {
+    const maxRetries = 3;
+    const retryDelay = 1000; // 1秒延迟
     const url = `${this.config.apiBase}/userFluxPackage?phonenum=${this.config.phonenum}&password=${this.config.password}`;
     
-    console.log(`正在调用userFluxPackage接口: ${url.replace(/phonenum=\d+/, 'phonenum=***').replace(/password=\d+/, 'password=***')}`);
+    console.log(`正在调用userFluxPackage接口${retryCount > 0 ? ` (重试第${retryCount}次)` : ''}: ${url.replace(/phonenum=\d+/, 'phonenum=***').replace(/password=\d+/, 'password=***')}`);
     
     try {
       const response = await fetch(url, {
@@ -52,14 +54,44 @@ export class EnhancedTelecomClient {
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // 详细处理不同的HTTP错误状态
+        const errorMessage = `HTTP error! status: ${response.status}`;
+        console.error(`❌ userFluxPackage接口返回错误: ${response.status} ${response.statusText}`);
+        
+        // 特殊处理400错误（可能是请求频率限制或参数问题）
+        if (response.status === 400) {
+          console.warn('⚠️ HTTP 400错误可能原因：请求频率过快、参数错误或服务暂时不可用');
+          
+          // 对于400错误，如果还有重试次数，等待后重试
+          if (retryCount < maxRetries) {
+            console.log(`🔄 等待${retryDelay}ms后重试...`);
+            await new Promise(resolve => setTimeout(resolve, retryDelay * (retryCount + 1))); // 递增延迟
+            return this.getFluxPackage(retryCount + 1);
+          }
+        }
+        
+        // 对于5xx服务器错误，也进行重试
+        if (response.status >= 500 && retryCount < maxRetries) {
+          console.log(`🔄 服务器错误，等待${retryDelay}ms后重试...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay * (retryCount + 1)));
+          return this.getFluxPackage(retryCount + 1);
+        }
+        
+        throw new Error(errorMessage);
       }
       
       const data = await response.json() as FluxPackageData;
-      console.log('✅ FluxPackage接口调用成功');
+      console.log(`✅ FluxPackage接口调用成功${retryCount > 0 ? ` (经过${retryCount}次重试)` : ''}`);
       return data;
     } catch (error) {
-      console.error('❌ 调用userFluxPackage接口失败:', error);
+      // 网络错误或其他异常，进行重试
+      if (retryCount < maxRetries && (error.name === 'TypeError' || error.message.includes('fetch'))) {
+        console.warn(`⚠️ 网络错误，等待${retryDelay}ms后重试: ${error.message}`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay * (retryCount + 1)));
+        return this.getFluxPackage(retryCount + 1);
+      }
+      
+      console.error(`❌ 调用userFluxPackage接口失败${retryCount > 0 ? ` (已重试${retryCount}次)` : ''}:`, error);
       throw error;
     }
   }

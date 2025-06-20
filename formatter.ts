@@ -154,7 +154,7 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
           if (category.leftStructure && category.rightStructure) {
             const usedNum = parseFloat(category.leftStructure.num) || 0;
             const remainNum = parseFloat(category.rightStructure.num) || 0;
-            const totalNum = usedNum + remainNum;
+            const totalNum = parseFloat((usedNum + remainNum).toFixed(2));
             const usedPercent = totalNum > 0 ? Math.round((usedNum / totalNum) * 100) : 0;
             const progress = createSimpleProgressBar(usedPercent, 100, 20);
             
@@ -773,12 +773,26 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
       }
     }
     
-    // 5. 月费构成TOP项目
+    // 5. 月费构成TOP项目（显示前3个主要套餐）
     if (actualData.balanceInfo?.phoneBillBars && Array.isArray(actualData.balanceInfo.phoneBillBars)) {
-      const topFee = actualData.balanceInfo.phoneBillBars[0]; // 取第一个最大项
-      if (topFee && topFee.title && topFee.barRightSubTitle) {
-        result += `\n📋 主要套餐：${topFee.title} ${topFee.barRightSubTitle}`;
-        hasContent = true;
+      const topFees = actualData.balanceInfo.phoneBillBars.slice(0, 3); // 取前3个主要项目
+      if (topFees.length > 0) {
+        if (topFees.length === 1) {
+          const topFee = topFees[0];
+          if (topFee && topFee.title && topFee.barRightSubTitle) {
+            result += `\n📋 主要套餐：${topFee.title} ${topFee.barRightSubTitle}`;
+            hasContent = true;
+          }
+        } else {
+          result += `\n📋 主要套餐 (共${actualData.balanceInfo.phoneBillBars.length}项)：`;
+          for (let i = 0; i < topFees.length; i++) {
+            const fee = topFees[i];
+            if (fee && fee.title && fee.barRightSubTitle) {
+              result += `\n  ${i + 1}. ${fee.title} ${fee.barRightSubTitle}`;
+            }
+          }
+          hasContent = true;
+        }
       }
     }
     
@@ -788,8 +802,8 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
   // 格式化基础Summary显示（当没有流量包数据时使用）
   private formatBasicSummaryDisplay(summaryData: SummaryData): string {
     const balance = (summaryData.balance / 100).toFixed(2);
-    const flowUsedGB = (summaryData.flowUse / 1024 / 1024).toFixed(2);
-    const flowTotalGB = (summaryData.flowTotal / 1024 / 1024).toFixed(2);
+    const flowUsedGB = parseFloat((summaryData.flowUse / 1024 / 1024).toFixed(2));
+    const flowTotalGB = parseFloat((summaryData.flowTotal / 1024 / 1024).toFixed(2));
     const voiceUsed = summaryData.voiceUsage;
     const voiceTotal = summaryData.voiceTotal;
     
@@ -824,8 +838,8 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
   // 格式化紧凑版机器人数据（适合钉钉/TG通知）
   public formatCompactForBot(summaryData: SummaryData, fluxPackageData: FluxPackageData): string {
     const balance = (summaryData.balance / 100).toFixed(2);
-    const flowUsedGB = (summaryData.flowUse / 1024 / 1024).toFixed(2);
-    const flowTotalGB = (summaryData.flowTotal / 1024 / 1024).toFixed(2);
+    const flowUsedGB = parseFloat((summaryData.flowUse / 1024 / 1024).toFixed(2));
+    const flowTotalGB = parseFloat((summaryData.flowTotal / 1024 / 1024).toFixed(2));
     const voiceUsed = summaryData.voiceUsage;
     const voiceTotal = summaryData.voiceTotal;
     
