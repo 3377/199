@@ -43,7 +43,10 @@
       "WEB_PASSWORD",
       "API_BASE",
       "CACHE_TIME",
-      "WHITELIST_NUM"
+      "WHITELIST_NUM",
+      "DINGTALK_WEBHOOK",
+      "TELEGRAM_BOT_TOKEN",
+      "TELEGRAM_CHAT_ID"
     ]
   }
 } 

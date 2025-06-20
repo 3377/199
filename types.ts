@@ -155,6 +155,13 @@ export interface ApiResponse {
   cached: boolean;
   phonenum?: string;
   timestamp?: string;
+  warning?: string;  // 警告信息（如部分发送失败）
+  send_results?: {   // 发送结果信息
+    platform: string;
+    results: any[];
+    total_sent: number;
+    total_failed: number;
+  };
 }
 
 // 用户配置类型

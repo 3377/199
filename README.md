@@ -41,6 +41,13 @@
 - **多种格式**：HTML页面、JSON数据、纯文本
 - **CORS支持**：跨域友好，便于集成
 
+### 🤖 机器人通知集成
+- **钉钉群机器人**：支持Webhook推送套餐使用情况
+- **Telegram Bot**：支持发送到频道或私聊
+- **双平台同发**：一个请求同时发送到多个平台
+- **智能格式化**：针对不同平台优化消息格式
+- **灵活配置**：支持环境变量和参数配置
+
 ## 🚀 快速部署
 
 ### Deno Deploy 部署
@@ -73,6 +80,9 @@
 | `WEB_PASSWORD` | ❌ | 网页访问密码 | `admin123` |
 | `API_BASE` | ❌ | 后端API地址 | `https://dx.ll.sd` |
 | `CACHE_TIME` | ❌ | 缓存时间（秒） | `120` |
+| `DINGTALK_WEBHOOK` | ❌ | 钉钉群机器人Webhook地址 | `https://oapi.dingtalk.com/robot/send?access_token=xxx` |
+| `TELEGRAM_BOT_TOKEN` | ❌ | Telegram机器人Token | `1234567890:ABCDefGhiJklMnoPqrStUvWxYz` |
+| `TELEGRAM_CHAT_ID` | ❌ | Telegram默认聊天ID | `@your_channel` 或 `-1001234567890` |
 
 > **注意**：手机号和密码必须一一对应，数量要匹配
 
@@ -102,6 +112,178 @@
 - `auto=30`: 自动刷新，30秒后重新加载
 
 ## 🔌 API 调用说明
+
+### 📤 机器人通知集成 API（新功能）
+
+**端点**: `POST /api/bot`
+
+支持查询套餐信息并同时发送到钉钉或Telegram机器人，适合自动化监控场景。
+
+#### 环境变量配置
+
+在部署平台设置以下环境变量：
+
+| 变量名 | 必需 | 说明 | 示例 |
+|--------|------|------|------|
+| `DINGTALK_WEBHOOK` | ❌ | 钉钉群机器人Webhook地址 | `https://oapi.dingtalk.com/robot/send?access_token=xxx` |
+| `TELEGRAM_BOT_TOKEN` | ❌ | Telegram机器人Token | `1234567890:ABCDefGhiJklMnoPqrStUvWxYz` |
+| `TELEGRAM_CHAT_ID` | ❌ | Telegram默认聊天ID | `@your_channel` 或 `-1001234567890` |
+
+#### 请求参数
+
+```json
+{
+  "phonenum": "199****1016",
+  "password": "123456",
+  "type": "compact",
+  "send_type": "both",
+  "chat_id": "@your_channel",
+  "use_markdown": false
+}
+```
+
+| 参数 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `phonenum` | string | ✅ | 手机号码 |
+| `password` | string | ✅ | 查询密码 |
+| `type` | string | ❌ | 数据格式：`basic`、`enhanced`、`compact`（默认） |
+| `send_type` | string | ❌ | 发送平台：`dingtalk`、`telegram`、`both` |
+| `chat_id` | string | ❌ | Telegram聊天ID（覆盖环境变量） |
+| `use_markdown` | boolean | ❌ | 是否使用Markdown格式（仅Telegram） |
+
+#### 响应格式
+
+```json
+{
+  "success": true,
+  "data": "格式化的查询结果",
+  "cached": false,
+  "phonenum": "199****1016",
+  "timestamp": "2024-01-01T12:00:00.000Z",
+  "send_results": {
+    "platform": "both",
+    "results": [
+      {
+        "platform": "dingtalk",
+        "success": true,
+        "message": "钉钉消息发送成功"
+      },
+      {
+        "platform": "telegram", 
+        "success": true,
+        "message": "Telegram消息发送成功"
+      }
+    ],
+    "total_sent": 2,
+    "total_failed": 0
+  }
+}
+```
+
+#### 使用示例
+
+**1. 仅查询，不发送通知**
+```bash
+curl -X POST https://199.deno.dev/api/bot \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phonenum": "199****1016",
+    "password": "123456",
+    "type": "compact"
+  }'
+```
+
+**2. 查询并发送到钉钉**
+```bash
+curl -X POST https://199.deno.dev/api/bot \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phonenum": "199****1016", 
+    "password": "123456",
+    "type": "compact",
+    "send_type": "dingtalk"
+  }'
+```
+
+**3. 查询并发送到Telegram**
+```bash
+curl -X POST https://199.deno.dev/api/bot \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phonenum": "199****1016",
+    "password": "123456", 
+    "type": "compact",
+    "send_type": "telegram",
+    "chat_id": "@your_channel",
+    "use_markdown": true
+  }'
+```
+
+**4. 查询并同时发送到两个平台**
+```bash
+curl -X POST https://199.deno.dev/api/bot \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phonenum": "199****1016",
+    "password": "123456",
+    "type": "enhanced", 
+    "send_type": "both"
+  }'
+```
+
+#### 定时监控脚本示例
+
+**Shell脚本（适用于Linux/macOS）**
+```bash
+#!/bin/bash
+# telecom_monitor.sh
+
+PHONE="199****1016"
+PASSWORD="123456"
+API_URL="https://199.deno.dev/api/bot"
+
+# 查询并发送到钉钉
+response=$(curl -s -X POST "$API_URL" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"phonenum\": \"$PHONE\",
+    \"password\": \"$PASSWORD\",
+    \"type\": \"compact\",
+    \"send_type\": \"dingtalk\"
+  }")
+
+echo "监控结果: $response"
+```
+
+**青龙面板定时任务**
+```javascript
+// telecom_bot_monitor.js
+const axios = require('axios');
+
+async function monitorTelecom() {
+  try {
+    const response = await axios.post('https://199.deno.dev/api/bot', {
+      phonenum: process.env.TELECOM_PHONE,
+      password: process.env.TELECOM_PASSWORD,
+      type: 'compact',
+      send_type: 'both'
+    });
+    
+    if (response.data.success) {
+      console.log('✅ 监控成功');
+      if (response.data.send_results) {
+        console.log(`📤 通知发送: 成功${response.data.send_results.total_sent}个，失败${response.data.send_results.total_failed}个`);
+      }
+    } else {
+      console.error('❌ 监控失败:', response.data.error);
+    }
+  } catch (error) {
+    console.error('❌ 请求异常:', error.message);
+  }
+}
+
+monitorTelecom();
+```
 
 ### 格式化查询 API
 

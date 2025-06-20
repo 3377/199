@@ -858,6 +858,88 @@ ${trendIcon} 日均流量：${dailyAvgFormatted} | 剩余天数：${stats.remain
     
     return result;
   }
+
+  // 格式化钉钉专用消息格式
+  public formatForDingTalk(summaryData: SummaryData, fluxPackageData: FluxPackageData, type: 'basic' | 'enhanced' | 'compact' = 'compact'): string {
+    let baseMessage: string;
+    
+    switch (type) {
+      case 'enhanced':
+        const fullMessage = this.formatEnhancedTelecomData(summaryData, fluxPackageData);
+        baseMessage = fullMessage;
+        break;
+      case 'basic':
+        baseMessage = this.formatBasicSummary(summaryData, fluxPackageData);
+        break;
+      case 'compact':
+      default:
+        baseMessage = this.formatCompactForBot(summaryData, fluxPackageData);
+        break;
+    }
+    
+    // 钉钉格式优化：添加标题和强调
+    let dingTalkMessage = `🔔 **电信套餐使用情况**\n\n`;
+    dingTalkMessage += baseMessage;
+    dingTalkMessage += `\n\n💡 数据来源：中国电信官方API`;
+    
+    return dingTalkMessage;
+  }
+
+  // 格式化Telegram专用消息格式
+  public formatForTelegram(summaryData: SummaryData, fluxPackageData: FluxPackageData, type: 'basic' | 'enhanced' | 'compact' = 'compact', useMarkdown: boolean = false): string {
+    let baseMessage: string;
+    
+    switch (type) {
+      case 'enhanced':
+        const fullMessage = this.formatEnhancedTelecomData(summaryData, fluxPackageData);
+        baseMessage = fullMessage;
+        break;
+      case 'basic':
+        baseMessage = this.formatBasicSummary(summaryData, fluxPackageData);
+        break;
+      case 'compact':
+      default:
+        baseMessage = this.formatCompactForBot(summaryData, fluxPackageData);
+        break;
+    }
+    
+    if (useMarkdown) {
+      // Telegram Markdown格式优化
+      let telegramMessage = `🔔 *电信套餐使用情况*\n\n`;
+      // 转义特殊的Markdown字符
+      const escapedMessage = baseMessage.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
+      telegramMessage += escapedMessage;
+      telegramMessage += `\n\n💡 _数据来源：中国电信官方API_`;
+      return telegramMessage;
+    } else {
+      // 普通文本格式
+      let telegramMessage = `🔔 电信套餐使用情况\n\n`;
+      telegramMessage += baseMessage;
+      telegramMessage += `\n\n💡 数据来源：中国电信官方API`;
+      return telegramMessage;
+    }
+  }
+
+  // 智能消息格式化（根据平台自动选择最佳格式）
+  public formatSmartMessage(
+    summaryData: SummaryData, 
+    fluxPackageData: FluxPackageData, 
+    platform: 'dingtalk' | 'telegram' | 'both',
+    type: 'basic' | 'enhanced' | 'compact' = 'compact',
+    options: { useMarkdown?: boolean } = {}
+  ): { dingtalk?: string; telegram?: string } {
+    const result: { dingtalk?: string; telegram?: string } = {};
+    
+    if (platform === 'dingtalk' || platform === 'both') {
+      result.dingtalk = this.formatForDingTalk(summaryData, fluxPackageData, type);
+    }
+    
+    if (platform === 'telegram' || platform === 'both') {
+      result.telegram = this.formatForTelegram(summaryData, fluxPackageData, type, options.useMarkdown);
+    }
+    
+    return result;
+  }
 }
 
 // 创建全局格式化器实例

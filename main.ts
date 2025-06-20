@@ -10,6 +10,7 @@ import { loadConfig, getConfigManager } from './config-manager.ts';
 import { TelecomAuthClient, getAuthClient } from './api-auth.ts';
 import { TelecomApiClient, getApiClient } from './api-client.ts';
 import { getSessionManager } from './session.ts';
+import { notificationManager, type NotificationPlatform, type SendResult } from './notification.ts';
 
 /**
  * 增强版电信套餐查询格式化服务
@@ -571,7 +572,14 @@ async function handleConfigManagement(request: Request): Promise<Response> {
 async function handleBotQuery(request: Request): Promise<ApiResponse> {
   try {
     const body = await request.json();
-    const { phonenum, password, type = 'basic' } = body;
+    const { 
+      phonenum, 
+      password, 
+      type = 'basic', 
+      send_type, 
+      chat_id, 
+      use_markdown = false 
+    } = body;
     
     if (!phonenum || !password) {
       return {
@@ -612,13 +620,54 @@ async function handleBotQuery(request: Request): Promise<ApiResponse> {
       formattedText = formatter.formatBasicSummary(basicData.summary, basicData.fluxPackage, importantData || undefined);
     }
     
-    return {
+    // 构建基础响应
+    let response: ApiResponse = {
       success: true,
       data: formattedText,
       cached: false,
       phonenum: maskPhoneNumber(phonenum),
       timestamp: new Date().toISOString()
     };
+    
+    // 如果指定了发送类型，则发送通知
+    if (send_type && ['dingtalk', 'telegram', 'both'].includes(send_type)) {
+      console.log(`📤 开始发送通知到: ${send_type}`);
+      
+      try {
+        const sendResults = await notificationManager.sendNotification(
+          send_type as NotificationPlatform,
+          formattedText,
+          chat_id,
+          use_markdown
+        );
+        
+        // 添加发送结果到响应中
+        const sendSummary = {
+          platform: send_type,
+          results: sendResults,
+          total_sent: sendResults.filter(r => r.success).length,
+          total_failed: sendResults.filter(r => !r.success).length
+        };
+        
+        response.send_results = sendSummary;
+        
+        // 如果所有发送都失败，更新主响应状态
+        if (sendSummary.total_sent === 0 && sendSummary.total_failed > 0) {
+          response.success = false;
+          response.error = `查询成功但通知发送失败: ${sendResults.map(r => r.error).filter(Boolean).join(', ')}`;
+        } else if (sendSummary.total_failed > 0) {
+          response.warning = `部分通知发送失败: ${sendResults.filter(r => !r.success).map(r => r.error).join(', ')}`;
+        }
+        
+        console.log(`📤 通知发送完成: 成功${sendSummary.total_sent}个，失败${sendSummary.total_failed}个`);
+        
+      } catch (sendError) {
+        console.error('❌ 通知发送异常:', sendError);
+        response.warning = `通知发送异常: ${sendError.message}`;
+      }
+    }
+    
+    return response;
     
   } catch (error) {
     console.error('❌ 机器人查询处理失败:', error);
